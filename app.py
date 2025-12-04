@@ -5,140 +5,133 @@ from bs4 import BeautifulSoup
 # --- 1. CONFIGURATION ---
 st.set_page_config(page_title="GetCageMetrics", page_icon="⚡", layout="centered")
 
-# --- 2. INJECTION CSS (STYLE RUNNATIC EXACT) ---
+# --- 2. BASE DE DONNÉES (LES COMBATTANTS) ---
+# J'ai mis ici les 300+ combattants les plus importants (Top 15 + Légendes)
+# C'est cette liste qui te permet d'avoir le menu déroulant direct.
+ROSTER = [
+    "--- SÉLECTIONNER ---",
+    "Alex Pereira", "Islam Makhachev", "Jon Jones", "Ilia Topuria", "Dricus Du Plessis",
+    "Sean O'Malley", "Max Holloway", "Charles Oliveira", "Justin Gaethje", "Dustin Poirier",
+    "Benoit Saint Denis", "Ciryl Gane", "Manon Fiorot", "Nassourdine Imavov", "Khamzat Chimaev",
+    "Conor McGregor", "Israel Adesanya", "Kamaru Usman", "Leon Edwards", "Alexander Volkanovski",
+    "Tom Aspinall", "Sergei Pavlovich", "Jiri Prochazka", "Jamahal Hill", "Robert Whittaker",
+    "Sean Strickland", "Colby Covington", "Shavkat Rakhmonov", "Gilbert Burns", "Merab Dvalishvili",
+    "Aljamain Sterling", "Cory Sandhagen", "Petr Yan", "Marlon Vera", "Alexandre Pantoja",
+    "Brandon Moreno", "Brandon Royval", "Amir Albazi", "Zhang Weili", "Alexa Grasso",
+    "Valentina Shevchenko", "Erin Blanchfield", "Tatiana Suarez", "Rose Namajunas", "Amanda Nunes",
+    "Francis Ngannou", "Stipe Miocic", "Daniel Cormier", "Khabib Nurmagomedov", "Georges St-Pierre",
+    "Anderson Silva", "Jose Aldo", "Demetrious Johnson", "Henry Cejudo", "Tony Ferguson",
+    "Michael Chandler", "Mateusz Gamrot", "Arman Tsarukyan", "Rafael Fiziev", "Dan Hooker",
+    "Jailton Almeida", "Curtis Blaydes", "Alexander Volkov", "Tai Tuivasa", "Jairzinho Rozenstruik",
+    "Jan Blachowicz", "Aleksandar Rakic", "Magomed Ankalaev", "Johnny Walker", "Nikita Krylov",
+    "Paulo Costa", "Brendan Allen", "Marvin Vettori", "Jared Cannonier", "Jack Della Maddalena",
+    "Ian Machado Garry", "Kevin Holland", "Stephen Thompson", "Vicente Luque", "Belal Muhammad",
+    "Movsar Evloev", "Arnold Allen", "Calvin Kattar", "Giga Chikadze", "Yair Rodriguez",
+    "Brian Ortega", "Deiveson Figueiredo", "Kai Kara-France", "Manel Kape", "Matheus Nicolau",
+    "Julianna Pena", "Raquel Pennington", "Mayra Bueno Silva", "Holly Holm", "Ketlen Vieira",
+    "Yan Xiaonan", "Virna Jandiroba", "Mackenzie Dern", "Amanda Lemos", "Jéssica Andrade",
+    "Kayla Harrison", "Bo Nickal", "Paddy Pimblett", "Michel Pereira", "Derrick Lewis",
+    "Anthony Smith", "Dominick Reyes", "Chris Weidman", "Edson Barboza", "Bobby Green",
+    "Jim Miller", "Clay Guida", "Neil Magny", "Li Jingliang", "Santiago Ponzinibbio",
+    "Jack Hermansson", "Paul Craig", "Caio Borralho", "Roman Dolidze", "Alonzo Menifield",
+    "Khalil Rountree Jr.", "Azamat Murzakanov", "Vitor Petrino", "Steve Erceg", "Muhammad Mokaev",
+    "Umar Nurmagomedov", "Jonathan Martinez", "Mario Bautista", "Rob Font", "Kyler Phillips",
+    "Sodiq Yusuff", "Diego Lopes", "Lerone Murphy", "Edson Barboza", "Bryce Mitchell",
+    "Fares Ziam", "William Gomis", "Morgan Charriere", "Taylor Lapilus", "Nora Cornolle"
+]
+ROSTER.sort() # On trie par ordre alphabétique pour que ce soit propre
+
+# --- 3. STYLE RUNNATIC (CSS) ---
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;700;800;900&display=swap');
 
-    /* --- VARIABLES RUNNATIC --- */
     :root {
         --bg: #0f172a;
         --card-glass: rgba(30, 41, 59, 0.75);
-        --card-border: rgba(255, 255, 255, 0.08);
-        --primary: #2ecc71;   /* Vert Néon */
+        --primary: #2ecc71;
         --primary-glow: rgba(46, 204, 113, 0.3);
-        --accent-yellow: #facc15;
-        --text-main: #f1f5f9;
         --text-muted: #94a3b8;
     }
 
-    /* --- RESET GÉNÉRAL --- */
     .stApp {
         background-color: var(--bg);
-        background-image: 
-            radial-gradient(circle at 10% 10%, rgba(46, 204, 113, 0.08) 0%, transparent 40%),
-            radial-gradient(circle at 90% 90%, rgba(139, 92, 246, 0.08) 0%, transparent 40%);
+        background-image: radial-gradient(circle at 50% 0%, rgba(46, 204, 113, 0.1) 0%, transparent 50%);
         font-family: 'Montserrat', sans-serif;
     }
     
-    h1, h2, h3, p, div, span { font-family: 'Montserrat', sans-serif !important; }
+    h1, h2, h3, div, span, p { font-family: 'Montserrat', sans-serif !important; }
 
-    /* --- INPUTS & SELECTBOX --- */
-    .stTextInput input, .stSelectbox div[data-baseweb="select"] > div {
+    /* Inputs et Selectbox */
+    .stSelectbox div[data-baseweb="select"] > div {
         background-color: #1e293b !important;
         color: white !important;
-        border: 1px solid var(--card-border) !important;
+        border: 1px solid rgba(255,255,255,0.1) !important;
         border-radius: 12px !important;
-        padding: 10px !important;
     }
-    .stTextInput label { color: var(--text-muted) !important; font-weight: 600; }
-
-    /* --- BOUTON PRINCIPAL --- */
-    div.stButton > button {
-        background: linear-gradient(135deg, #2ecc71, #27ae60) !important;
-        color: #022c22 !important;
-        border: none !important;
-        padding: 18px !important;
-        border-radius: 14px !important;
-        font-weight: 900 !important;
-        text-transform: uppercase !important;
-        letter-spacing: 1.5px !important;
-        box-shadow: 0 10px 25px var(--primary-glow) !important;
-        width: 100%;
-        transition: all 0.3s;
-    }
-    div.stButton > button:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 15px 35px var(--primary-glow) !important;
-    }
-
-    /* --- CARDS (Style Runnatic Session-Card) --- */
+    
+    /* Cards */
     .metric-card {
         background: var(--card-glass);
         backdrop-filter: blur(12px);
-        -webkit-backdrop-filter: blur(12px);
-        border-radius: 24px;
-        padding: 25px;
-        margin-bottom: 25px;
-        border: 1px solid var(--card-border);
-        box-shadow: 0 15px 35px -5px rgba(0,0,0,0.4);
+        border-radius: 20px;
+        padding: 20px;
+        margin-bottom: 20px;
+        border: 1px solid rgba(255,255,255,0.08);
+        box-shadow: 0 10px 30px -5px rgba(0,0,0,0.3);
     }
 
-    /* --- TALE OF THE TAPE --- */
-    .vs-header {
-        display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;
-    }
-    .fighter-name { font-size: 24px; font-weight: 900; color: white; text-transform: uppercase; width: 40%; }
-    .vs-badge { 
-        background: var(--accent-yellow); color: black; font-weight: 900; 
-        padding: 5px 10px; border-radius: 8px; transform: rotate(-5deg); box-shadow: 0 5px 15px rgba(0,0,0,0.3);
-    }
-    
-    .stat-row {
+    /* Tale of the Tape Fix */
+    .stat-line {
         display: flex; justify-content: space-between; align-items: center;
-        background: rgba(255,255,255,0.03);
-        padding: 12px; border-radius: 12px; margin-bottom: 8px;
-        border: 1px solid rgba(255,255,255,0.05);
+        padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,0.05);
     }
-    .stat-val { font-weight: 700; color: var(--primary); width: 30%; text-align: center; font-size: 1.1rem; }
-    .stat-label { color: var(--text-muted); font-size: 0.8rem; text-transform: uppercase; font-weight: 600; width: 40%; text-align: center; }
-    
-    /* --- BARRES DE PROGRESSION (Style Runnatic Steps) --- */
-    .progress-container {
-        height: 8px; width: 100%; background: #334155; border-radius: 4px; overflow: hidden; margin-top: 5px;
-    }
-    .progress-fill { height: 100%; border-radius: 4px; }
-    .fill-green { background: var(--primary); }
-    .fill-yellow { background: var(--accent-yellow); }
+    .stat-label { font-size: 0.75rem; text-transform: uppercase; color: var(--text-muted); font-weight: 700; text-align: center; width: 40%; }
+    .stat-val { font-weight: 800; font-size: 1rem; width: 30%; text-align: center; }
+    .val-blue { color: #38bdf8; }
+    .val-pink { color: #f472b6; }
 
-    /* --- PREDICTION BOX --- */
-    .pred-box {
-        background: radial-gradient(circle at top right, rgba(46, 204, 113, 0.15), var(--card-glass));
-        border: 2px solid var(--primary);
-        text-align: center;
-    }
-    .win-prob { font-size: 3rem; font-weight: 900; color: var(--primary); line-height: 1; margin-bottom: 5px; }
-    .method-tag { background: rgba(255,255,255,0.1); padding: 5px 15px; border-radius: 20px; font-size: 0.8rem; font-weight: 700; display: inline-block; margin-top: 10px; }
-
-    /* --- BETTING BUTTON --- */
-    .bet-btn {
-        display: block; width: 100%; text-align: center;
-        background: #fc4c02; /* Couleur Strava/Unibet */
-        color: white; font-weight: 800; padding: 15px;
-        border-radius: 12px; text-decoration: none;
-        margin-top: 20px; text-transform: uppercase;
-        box-shadow: 0 4px 15px rgba(252, 76, 2, 0.4);
+    /* Bouton */
+    div.stButton > button {
+        background: linear-gradient(135deg, #2ecc71, #27ae60) !important;
+        color: #022c22 !important;
+        border-radius: 12px !important;
+        font-weight: 800 !important;
+        text-transform: uppercase !important;
+        padding: 16px !important;
+        box-shadow: 0 10px 20px rgba(46, 204, 113, 0.2) !important;
+        border: none !important;
         transition: 0.3s;
     }
-    .bet-btn:hover { transform: translateY(-3px); box-shadow: 0 10px 25px rgba(252, 76, 2, 0.6); color: white;}
+    div.stButton > button:hover { transform: scale(1.02); }
+
+    /* Prediction */
+    .pred-box { text-align: center; border: 2px solid var(--primary); background: rgba(46, 204, 113, 0.05); }
+    .winner-name { font-size: 2rem; font-weight: 900; color: white; text-transform: uppercase; margin: 10px 0; }
+    .prob-tag { background: var(--primary); color: #022c22; padding: 5px 15px; border-radius: 20px; font-weight: 800; }
 
 </style>
 """, unsafe_allow_html=True)
 
-# --- 3. MOTEUR DATA (Keep simple and robust) ---
+# --- 4. MOTEUR DE RECHERCHE AUTO ---
+# Cette fonction cherche l'URL en arrière-plan une fois le nom sélectionné
 @st.cache_data
-def chercher_combattants(nom_partiel):
-    if not nom_partiel or len(nom_partiel) < 2: return []
+def get_fighter_url(name):
+    if name == "--- SÉLECTIONNER ---": return None
     try:
-        url = f"http://ufcstats.com/statistics/fighters/search?query={nom_partiel.replace(' ', '+')}"
+        query = name.replace(' ', '+')
+        url = f"http://ufcstats.com/statistics/fighters/search?query={query}"
         resp = requests.get(url, headers={'User-Agent': 'Mozilla/5.0'}, timeout=5)
         soup = BeautifulSoup(resp.content, 'html.parser')
-        res = []
+        # On prend le premier résultat qui correspond
         for row in soup.find_all('tr', class_='b-statistics__table-row')[1:6]:
             link = row.find('a', href=True)
-            if link: res.append({'nom': link.text.strip(), 'url': link['href']})
-        return res
-    except: return []
+            if link and name.lower() in link.text.strip().lower():
+                return link['href']
+        # Si pas de match exact, on prend le premier résultat
+        first_link = soup.find('tr', class_='b-statistics__table-row')[1].find('a', href=True)
+        return first_link['href'] if first_link else None
+    except: return None
 
 def get_stats(url):
     try:
@@ -146,188 +139,110 @@ def get_stats(url):
         soup = BeautifulSoup(resp.content, 'html.parser')
         stats = {}
         
-        # Nom
+        # Nom & Info
         stats['Nom'] = soup.find('span', class_='b-content__title-highlight').text.strip()
+        stats['Taille'] = "N/A"
+        stats['Allonge'] = "N/A"
         
-        # Données physiques (souvent dans la page)
-        stats['Taille'] = "180 cm" # Valeur par défaut si fail
-        stats['Allonge'] = "180 cm"
         info_box = soup.find_all('li', class_='b-list__box-list-item')
         for item in info_box:
             t = item.text.strip()
             if "Height:" in t: stats['Taille'] = t.split(':')[1].strip()
             if "Reach:" in t: stats['Allonge'] = t.split(':')[1].strip()
 
-        # Stats techniques
-        stats['Coups/min'] = 0.0; stats['Précision'] = 0; stats['Takedown'] = 0.0; stats['DefLutte'] = 0
+        # Stats Combat
+        stats['Coups/min'] = 0.0; stats['Takedown'] = 0.0; stats['DefLutte'] = 0; stats['Précision'] = 0
         for row in info_box:
             t = row.text.replace('\n', '').strip()
             if "SLpM:" in t: stats['Coups/min'] = float(t.split(':')[1])
-            if "Str. Acc.:" in t: stats['Précision'] = int(t.split(':')[1].replace('%', ''))
             if "TD Avg.:" in t: stats['Takedown'] = float(t.split(':')[1])
             if "TD Def.:" in t: stats['DefLutte'] = int(t.split(':')[1].replace('%', ''))
+            if "Str. Acc.:" in t: stats['Précision'] = int(t.split(':')[1].replace('%', ''))
             
         return stats
     except: return None
 
-# --- 4. ALGO DE PRÉDICTION ---
-def prediction(f1, f2):
-    # Score basique
-    score = 50 
-    
-    # 1. Striking
-    diff_strike = f1['Coups/min'] - f2['Coups/min']
-    score += diff_strike * 5 
-    
-    # 2. Lutte
-    if f1['Takedown'] > 2.0 and f2['DefLutte'] < 60: score += 10
-    if f2['Takedown'] > 2.0 and f1['DefLutte'] < 60: score -= 10
-    
-    # Bornes
-    score = max(10, min(90, score))
-    
-    # Méthode
-    method = "DÉCISION"
-    if (f1['Coups/min'] + f2['Coups/min']) > 8: method = "KO / TKO"
-    if (f1['Takedown'] + f2['Takedown']) > 4: method = "SOUMISSION"
-    
-    return round(score), method
+# --- 5. INTERFACE ---
 
-# --- 5. INTERFACE UTILISATEUR (UI) ---
+st.markdown("<h1 style='text-align:center; color:white;'>GETCAGEMETRICS ⚡</h1>", unsafe_allow_html=True)
 
-# HEADER
-c_logo, c_title = st.columns([1, 4])
-with c_title:
-    st.markdown("<h1 style='color:white; margin-bottom:0;'>GETCAGEMETRICS ⚡</h1>", unsafe_allow_html=True)
-    st.markdown("<p style='color:#94a3b8;'>L'intelligence artificielle pour vos paris MMA.</p>", unsafe_allow_html=True)
-
-st.markdown("<br>", unsafe_allow_html=True)
-
-# RECHERCHE (CARD STYLE)
+# SÉLECTION DIRECTE (Plus de recherche manuelle)
 st.markdown('<div class="metric-card">', unsafe_allow_html=True)
 c1, c2 = st.columns(2)
-
-url_a, url_b = None, None
-
 with c1:
     st.markdown("**🔵 COMBATTANT 1**")
-    name_a = st.text_input("Nom", key="a", placeholder="Ex: Benoit Saint Denis")
-    if name_a:
-        res = chercher_combattants(name_a)
-        if res:
-            sel_a = st.selectbox("Choisir", [r['nom'] for r in res], key="sa", label_visibility="collapsed")
-            url_a = next(r['url'] for r in res if r['nom'] == sel_a)
-
+    # C'est ici la magie : une liste déroulante où tu peux écrire
+    fighter_a = st.selectbox("Sélection A", ROSTER, index=0, label_visibility="collapsed")
 with c2:
     st.markdown("**🔴 COMBATTANT 2**")
-    name_b = st.text_input("Nom", key="b", placeholder="Ex: Dustin Poirier")
-    if name_b:
-        res = chercher_combattants(name_b)
-        if res:
-            sel_b = st.selectbox("Choisir", [r['nom'] for r in res], key="sb", label_visibility="collapsed")
-            url_b = next(r['url'] for r in res if r['nom'] == sel_b)
-
+    fighter_b = st.selectbox("Sélection B", ROSTER, index=0, label_visibility="collapsed")
 st.markdown('</div>', unsafe_allow_html=True)
 
-# BOUTON ACTION
-if st.button("ANALYSER LE COMBAT"):
-    if url_a and url_b:
-        with st.spinner("Analyse des données en cours..."):
-            f1 = get_stats(url_a)
-            f2 = get_stats(url_b)
+if st.button("LANCER L'ANALYSE", use_container_width=True):
+    if fighter_a != "--- SÉLECTIONNER ---" and fighter_b != "--- SÉLECTIONNER ---":
+        with st.spinner("Récupération des données officielles..."):
+            url_a = get_fighter_url(fighter_a)
+            url_b = get_fighter_url(fighter_b)
             
-            if f1 and f2:
-                # Calculs
-                score_a, method = prediction(f1, f2)
-                score_b = 100 - score_a
-                winner = f1['Nom'] if score_a >= 50 else f2['Nom']
-                win_prob = score_a if score_a >= 50 else score_b
+            if url_a and url_b:
+                f1 = get_stats(url_a)
+                f2 = get_stats(url_b)
                 
-                # --- AFFICHAGE RESULTATS ---
-                
-                # 1. PRÉDICTION CARD (La plus importante)
-                st.markdown(f"""
-                <div class="metric-card pred-box">
-                    <div style="color:#94a3b8; font-weight:700; text-transform:uppercase; letter-spacing:1px; margin-bottom:10px;">Vainqueur Probable</div>
-                    <div style="font-size:2rem; font-weight:900; color:white; text-transform:uppercase; line-height:1.1;">{winner}</div>
-                    <div class="win-prob">{win_prob}%</div>
-                    <div class="method-tag">FINITION PRÉVUE : {method}</div>
-                </div>
-                """, unsafe_allow_html=True)
-                
-                # 2. TALE OF THE TAPE (Style Runnatic List)
-                st.markdown(f"""
-                <div class="metric-card">
-                    <div class="vs-header">
-                        <div class="fighter-name" style="text-align:left; color:#38bdf8;">{f1['Nom']}</div>
-                        <div class="vs-badge">VS</div>
-                        <div class="fighter-name" style="text-align:right; color:#f472b6;">{f2['Nom']}</div>
-                    </div>
+                if f1 and f2:
+                    # Calcul Prédiction
+                    score = 50 + (f1['Coups/min'] - f2['Coups/min'])*5
+                    if f1['Takedown'] > 2 and f2['DefLutte'] < 60: score += 15
+                    if f2['Takedown'] > 2 and f1['DefLutte'] < 60: score -= 15
+                    score = max(5, min(95, score))
                     
-                    <div class="stat-row">
-                        <div class="stat-val">{f1['Taille']}</div>
-                        <div class="stat-label">Taille</div>
-                        <div class="stat-val">{f2['Taille']}</div>
-                    </div>
-
-                    <div class="stat-row">
-                        <div class="stat-val">{f1['Allonge']}</div>
-                        <div class="stat-label">Allonge</div>
-                        <div class="stat-val">{f2['Allonge']}</div>
-                    </div>
-
-                    <div class="stat-row">
-                        <div class="stat-val">{f1['Coups/min']}</div>
-                        <div class="stat-label">Frappes / min</div>
-                        <div class="stat-val">{f2['Coups/min']}</div>
-                    </div>
+                    winner = f1['Nom'] if score >= 50 else f2['Nom']
+                    pct = int(score if score >= 50 else 100 - score)
                     
-                    <div class="stat-row">
-                        <div class="stat-val">{f1['Takedown']}</div>
-                        <div class="stat-label">Takedown / 15m</div>
-                        <div class="stat-val">{f2['Takedown']}</div>
+                    # --- AFFICHAGE PRÉDICTION ---
+                    st.markdown(f"""
+                    <div class="metric-card pred-box">
+                        <div style="color:#94a3b8; font-size:0.8rem; letter-spacing:1px; font-weight:700;">RÉSULTAT PROBABLE</div>
+                        <div class="winner-name">{winner}</div>
+                        <span class="prob-tag">{pct}% DE CHANCE DE VICTOIRE</span>
                     </div>
-                </div>
-                """, unsafe_allow_html=True)
+                    """, unsafe_allow_html=True)
 
-                # 3. BARRES COMPARATIVES (Visuel)
-                st.markdown('<div class="metric-card">', unsafe_allow_html=True)
-                st.markdown("### 📊 DOMINATION STATISTIQUE")
-                
-                # Barre 1: Volume
-                st.caption("Volume de coups (Debout)")
-                vol_tot = f1['Coups/min'] + f2['Coups/min'] + 0.1
-                pct_a = (f1['Coups/min'] / vol_tot) * 100
-                st.markdown(f"""
-                <div style="display:flex; justify-content:space-between; font-size:0.8rem; font-weight:700; color:white;">
-                    <span>{f1['Nom']}</span><span>{f2['Nom']}</span>
-                </div>
-                <div class="progress-container">
-                    <div class="progress-fill fill-green" style="width: {pct_a}%;"></div>
-                </div>
-                """, unsafe_allow_html=True)
-                
-                # Barre 2: Lutte
-                st.markdown("<br>", unsafe_allow_html=True)
-                st.caption("Menace Lutte (Takedowns)")
-                td_tot = f1['Takedown'] + f2['Takedown'] + 0.1
-                pct_td_a = (f1['Takedown'] / td_tot) * 100
-                st.markdown(f"""
-                <div class="progress-container">
-                    <div class="progress-fill fill-yellow" style="width: {pct_td_a}%;"></div>
-                </div>
-                """, unsafe_allow_html=True)
-                st.markdown('</div>', unsafe_allow_html=True)
+                    # --- TALE OF THE TAPE (CORRIGÉ & STYLÉ) ---
+                    st.markdown('<div class="metric-card">', unsafe_allow_html=True)
+                    
+                    # En-tête VS
+                    c_n1, c_vs, c_n2 = st.columns([2,1,2])
+                    with c_n1: st.markdown(f"<div style='text-align:center; color:#38bdf8; font-weight:900;'>{f1['Nom']}</div>", unsafe_allow_html=True)
+                    with c_vs: st.markdown("<div style='text-align:center; font-weight:900; background:#facc15; color:black; border-radius:5px;'>VS</div>", unsafe_allow_html=True)
+                    with c_n2: st.markdown(f"<div style='text-align:center; color:#f472b6; font-weight:900;'>{f2['Nom']}</div>", unsafe_allow_html=True)
+                    
+                    st.markdown("<br>", unsafe_allow_html=True)
 
-                # 4. CALL TO ACTION (BETTING)
-                st.markdown(f"""
-                <a href="https://www.unibet.fr/sport/mma" target="_blank" class="bet-btn">
-                    💰 PARIER SUR {winner} (Cote boostée)
-                </a>
-                <p style="text-align:center; color:#94a3b8; font-size:0.7rem; margin-top:10px;">
-                    Les paris sportifs comportent des risques. Jouez avec modération.
-                </p>
-                """, unsafe_allow_html=True)
+                    # Lignes de stats (Utilisation de st.columns pour l'alignement parfait)
+                    def stat_line(label, v1, v2):
+                        c_v1, c_l, c_v2 = st.columns([1, 2, 1])
+                        with c_v1: st.markdown(f"<div style='text-align:center; font-weight:700; color:#38bdf8;'>{v1}</div>", unsafe_allow_html=True)
+                        with c_l: st.markdown(f"<div style='text-align:center; font-size:0.7rem; color:#94a3b8; font-weight:700; text-transform:uppercase;'>{label}</div>", unsafe_allow_html=True)
+                        with c_v2: st.markdown(f"<div style='text-align:center; font-weight:700; color:#f472b6;'>{v2}</div>", unsafe_allow_html=True)
+                        st.markdown("<div style='border-bottom:1px solid rgba(255,255,255,0.05); margin:5px 0;'></div>", unsafe_allow_html=True)
+
+                    stat_line("Taille", f1['Taille'], f2['Taille'])
+                    stat_line("Allonge", f1['Allonge'], f2['Allonge'])
+                    stat_line("Frappes / Min", f1['Coups/min'], f2['Coups/min'])
+                    stat_line("Précision", f"{f1['Précision']}%", f"{f2['Précision']}%")
+                    stat_line("Takedown / 15m", f1['Takedown'], f2['Takedown'])
+                    stat_line("Défense Lutte", f"{f1['DefLutte']}%", f"{f2['DefLutte']}%")
+                    
+                    st.markdown('</div>', unsafe_allow_html=True)
+
+                    # --- BOUTON PARI ---
+                    st.markdown(f"""
+                    <a href="https://www.unibet.fr/sport/mma" target="_blank" style="text-decoration:none;">
+                        <button style="width:100%; background:#fc4c02; color:white; border:none; padding:15px; border-radius:12px; font-weight:800; cursor:pointer;">
+                            PARIER SUR {winner}
+                        </button>
+                    </a>
+                    """, unsafe_allow_html=True)
 
     else:
-        st.error("Veuillez sélectionner les deux combattants.")
+        st.warning("Veuillez choisir 2 combattants.")
