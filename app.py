@@ -4,12 +4,15 @@ import os
 # --- 1. CONFIGURATION ---
 st.set_page_config(page_title="CageMetrics - Pronostics MMA", page_icon="💰", layout="centered")
 
-# --- 2. GESTION SESSION ---
+# --- 2. GESTION SESSION (CORRIGÉE) ---
 if 'lang' not in st.session_state:
     st.session_state.lang = 'fr'
 
 def toggle_lang():
-    st.session_state.lang = 'en' if st.session_state.lang == 'fr' else 'fr'
+    if st.session_state.lang == 'fr':
+        st.session_state.lang = 'en'
+    else:
+        st.session_state.lang = 'fr'
 
 T = {
     "fr": {
@@ -56,7 +59,6 @@ T = {
 txt = T[st.session_state.lang]
 
 # --- 3. DATABASE (VALEURS EN ENTIERS) ---
-# Toutes les valeurs sont des nombres purs (int) pour éviter les bugs
 DB = {
     "Jon Jones":        {"Cat": "HW", "Tier": 1, "Style": "GOAT", "Taille": 193, "Allonge": 215, "Str": 88, "Grap": 98, "Chin": 98, "Cardio": 95, "XP": 100, "DefLutte": 95},
     "Tom Aspinall":     {"Cat": "HW", "Tier": 2, "Style": "Hybrid", "Taille": 196, "Allonge": 198, "Str": 96, "Grap": 85, "Chin": 90, "Cardio": 85, "XP": 88, "DefLutte": 100},
@@ -97,7 +99,7 @@ DB = {
 
 WEIGHT_MAP = ["BW", "FW", "LW", "WW", "MW", "LHW", "HW"]
 
-# --- 4. ALGO & LOGIQUE (FIXED) ---
+# --- 4. ALGO & LOGIQUE ---
 def analyze_fight(f1, f2):
     score = 0
     reasons = []
@@ -123,8 +125,7 @@ def analyze_fight(f1, f2):
     if f1['Cardio'] > f2['Cardio'] + 10: score += 5; reasons.append(f"{txt['reasons']['cardio']} ({f1['Nom']})")
     elif f2['Cardio'] > f1['Cardio'] + 10: score -= 5; reasons.append(f"{txt['reasons']['cardio']} ({f2['Nom']})")
 
-    # 4. PHYSIQUE (Correction du bug de comparaison)
-    # On force la conversion en int pour être sûr
+    # 4. PHYSIQUE
     try:
         r1 = int(f1['Allonge'])
         r2 = int(f2['Allonge'])
@@ -142,7 +143,7 @@ def analyze_fight(f1, f2):
         
     return int(final_score), ko, sub, dec, reasons[:3]
 
-# --- 5. CSS (AFFILIATION THEME) ---
+# --- 5. CSS ---
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;800;900&display=swap');
@@ -181,7 +182,8 @@ with c2:
     else: st.markdown("<h1 style='text-align:center; color:white;'>CAGEMETRICS</h1>", unsafe_allow_html=True)
     st.markdown(f"<div style='text-align:center; color:#94a3b8; font-size:0.9rem; margin-top:-10px;'>{txt['sub']}</div>", unsafe_allow_html=True)
 with c3:
-    if st.button("🇫🇷/🇺🇸", key="lang"): toggle_lang(); st.rerun()
+    # KEY UNIQUE POUR EVITER L'ERREUR
+    if st.button("🇫🇷/🇺🇸", key="btn_toggle_lang"): toggle_lang(); st.rerun()
 
 st.markdown("<br>", unsafe_allow_html=True)
 
