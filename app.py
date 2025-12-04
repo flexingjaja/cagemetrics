@@ -185,7 +185,14 @@ st.markdown("""
 # --- 7. INTERFACE ---
 c_t, c_l = st.columns([5,1])
 with c_t: 
-    st.markdown(f"<div class='main-title'>CAGEMETRICS <span style='color:#2ecc71'>PRO</span></div>", unsafe_allow_html=True)
+    # --- LOGO & TITRE ---
+    # J'utilise l'image que vous avez fournie. Assurez-vous que le fichier image_0.png est dans le même dossier.
+    # Si vous l'hébergez en ligne, remplacez le src par l'URL.
+    st.markdown(f"""
+    <div style="display: flex; align-items: center; justify-content: center; margin-bottom: 5px;">
+        <img src="https://i.imgur.com/8Q66666.png" alt="Logo" style="height: 50px; margin-right: 15px;"> <h1 class="main-title" style="margin: 0;">CAGEMETRICS <span style="color:#2ecc71">PRO</span></h1>
+    </div>
+    """, unsafe_allow_html=True)
     st.caption(txt['sub'])
 with c_l: 
     if st.button("🇫🇷" if st.session_state.lang == 'en' else "🇺🇸"): toggle(); st.rerun()
@@ -213,34 +220,37 @@ c2.markdown("<div style='text-align:center; padding-top:10px; font-weight:900; c
 f_b = c3.selectbox("B", filtered_roster, index=idx_b, label_visibility="collapsed", key="fb")
 st.markdown('</div>',unsafe_allow_html=True)
 
-if st.button(txt['btn']):
-    if f_a==f_b: st.warning(txt['err'])
-    else:
-        with st.spinner("..."):
-            raw_s1 = get_data(f_a)
-            raw_s2 = get_data(f_b)
-            s1 = process_units(raw_s1, st.session_state.lang)
-            s2 = process_units(raw_s2, st.session_state.lang)
-            
-            if s1 and s2:
-                sc,k,sb,d=calc_algo(s1,s2); w=s1['Nom'] if sc>=50 else s2['Nom']; cf=sc if sc>=50 else 100-sc
+# --- BOUTON CENTRÉ ---
+col_pad1, col_btn, col_pad2 = st.columns([1, 2, 1])
+with col_btn:
+    if st.button(txt['btn'], use_container_width=True):
+        if f_a==f_b: st.warning(txt['err'])
+        else:
+            with st.spinner("..."):
+                raw_s1 = get_data(f_a)
+                raw_s2 = get_data(f_b)
+                s1 = process_units(raw_s1, st.session_state.lang)
+                s2 = process_units(raw_s2, st.session_state.lang)
                 
-                # Winner
-                st.markdown(f"""<div class="glass-card" style="text-align:center; border:2px solid #2ecc71; background:rgba(46, 204, 113, 0.05);"><div style="color:#94a3b8; font-size:0.7rem; font-weight:700; letter-spacing:1px; margin-bottom:5px;">{txt['win']}</div><div style="font-size:2.2rem; font-weight:900; color:white; line-height:1; margin-bottom:10px;">{w}</div><span style="background:#2ecc71; color:#020617; padding:4px 12px; border-radius:20px; font-weight:800; font-size:0.8rem;">{cf}% {txt['conf']}</span></div>""",unsafe_allow_html=True)
-                
-                # Finish
-                st.markdown(f"""<div class="glass-card"><div style="text-align:center; font-weight:800; color:white;">{txt['meth']}</div><div class="finish-cont"><div style="width:{k}%; background:#ef4444;"></div><div style="width:{sb}%; background:#eab308;"></div><div style="width:{d}%; background:#3b82f6;"></div></div><div style="display:flex; justify-content:space-between; margin-top:8px; font-size:0.7rem; font-weight:700;"><span style="color:#ef4444">KO/TKO {k}%</span><span style="color:#eab308">SUB {sb}%</span><span style="color:#3b82f6">DEC {d}%</span></div></div>""",unsafe_allow_html=True)
-                
-                # Tech
-                st.markdown(f'<div class="glass-card"><div style="text-align:center; color:#94a3b8; font-weight:700; margin-bottom:15px;">{txt["tech"]}</div>',unsafe_allow_html=True)
-                def stat_vis(l,v1,v2):
-                    n1=clean_num(v1); n2=clean_num(v2); tot=max(n1+n2,0.1); p1=(n1/tot)*100; p2=(n2/tot)*100
-                    st.markdown(f"""<div style="margin-bottom:12px;"><div style="display:flex; justify-content:space-between; font-weight:700; font-size:0.9rem;"><span style="color:#38bdf8">{v1}</span><span style="color:#f43f5e">{v2}</span></div><div class="bar-bg"><div class="bar-l" style="width:{p1}%"></div><div class="bar-r" style="width:{p2}%"></div></div><div style="text-align:center; font-size:0.7rem; color:#94a3b8; font-weight:700; text-transform:uppercase; margin-top:2px;">{l}</div></div>""",unsafe_allow_html=True)
-                l=txt['lbl']
-                stat_vis(l[0],s1['Taille'],s2['Taille']); stat_vis(l[1],s1['Allonge'],s2['Allonge']); stat_vis(l[2],s1['Coups'],s2['Coups'])
-                stat_vis(l[3],f"{s1['Preci']}%",f"{s2['Preci']}%"); stat_vis(l[4],s1['TD'],s2['TD']); stat_vis(l[5],f"{s1['DefLutte']}%",f"{s2['DefLutte']}%")
-                st.markdown('</div>',unsafe_allow_html=True)
-                
-                # CTA
-                st.markdown(f"""<a href="https://www.unibet.fr/sport/mma" target="_blank" style="text-decoration:none;"><button style="width:100%; background:#fc4c02; color:white; border:none; padding:16px; border-radius:12px; font-weight:800; cursor:pointer;">{txt['cta']} {w}</button></a>""",unsafe_allow_html=True)
-            else: st.error("Data error.")
+                if s1 and s2:
+                    sc,k,sb,d=calc_algo(s1,s2); w=s1['Nom'] if sc>=50 else s2['Nom']; cf=sc if sc>=50 else 100-sc
+                    
+                    # Winner
+                    st.markdown(f"""<div class="glass-card" style="text-align:center; border:2px solid #2ecc71; background:rgba(46, 204, 113, 0.05);"><div style="color:#94a3b8; font-size:0.7rem; font-weight:700; letter-spacing:1px; margin-bottom:5px;">{txt['win']}</div><div style="font-size:2.2rem; font-weight:900; color:white; line-height:1; margin-bottom:10px;">{w}</div><span style="background:#2ecc71; color:#020617; padding:4px 12px; border-radius:20px; font-weight:800; font-size:0.8rem;">{cf}% {txt['conf']}</span></div>""",unsafe_allow_html=True)
+                    
+                    # Finish
+                    st.markdown(f"""<div class="glass-card"><div style="text-align:center; font-weight:800; color:white;">{txt['meth']}</div><div class="finish-cont"><div style="width:{k}%; background:#ef4444;"></div><div style="width:{sb}%; background:#eab308;"></div><div style="width:{d}%; background:#3b82f6;"></div></div><div style="display:flex; justify-content:space-between; margin-top:8px; font-size:0.7rem; font-weight:700;"><span style="color:#ef4444">KO/TKO {k}%</span><span style="color:#eab308">SUB {sb}%</span><span style="color:#3b82f6">DEC {d}%</span></div></div>""",unsafe_allow_html=True)
+                    
+                    # Tech
+                    st.markdown(f'<div class="glass-card"><div style="text-align:center; color:#94a3b8; font-weight:700; margin-bottom:15px;">{txt["tech"]}</div>',unsafe_allow_html=True)
+                    def stat_vis(l,v1,v2):
+                        n1=clean_num(v1); n2=clean_num(v2); tot=max(n1+n2,0.1); p1=(n1/tot)*100; p2=(n2/tot)*100
+                        st.markdown(f"""<div style="margin-bottom:12px;"><div style="display:flex; justify-content:space-between; font-weight:700; font-size:0.9rem;"><span style="color:#38bdf8">{v1}</span><span style="color:#f43f5e">{v2}</span></div><div class="bar-bg"><div class="bar-l" style="width:{p1}%"></div><div class="bar-r" style="width:{p2}%"></div></div><div style="text-align:center; font-size:0.7rem; color:#94a3b8; font-weight:700; text-transform:uppercase; margin-top:2px;">{l}</div></div>""",unsafe_allow_html=True)
+                    l=txt['lbl']
+                    stat_vis(l[0],s1['Taille'],s2['Taille']); stat_vis(l[1],s1['Allonge'],s2['Allonge']); stat_vis(l[2],s1['Coups'],s2['Coups'])
+                    stat_vis(l[3],f"{s1['Preci']}%",f"{s2['Preci']}%"); stat_vis(l[4],s1['TD'],s2['TD']); stat_vis(l[5],f"{s1['DefLutte']}%",f"{s2['DefLutte']}%")
+                    st.markdown('</div>',unsafe_allow_html=True)
+                    
+                    # CTA
+                    st.markdown(f"""<a href="https://www.unibet.fr/sport/mma" target="_blank" style="text-decoration:none;"><button style="width:100%; background:#fc4c02; color:white; border:none; padding:16px; border-radius:12px; font-weight:800; cursor:pointer;">{txt['cta']} {w}</button></a>""",unsafe_allow_html=True)
+                else: st.error("Data error.")
