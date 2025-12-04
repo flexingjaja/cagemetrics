@@ -12,21 +12,25 @@ def toggle(): st.session_state.lang = 'en' if st.session_state.lang == 'fr' else
 
 T = {
     "fr": { 
-        "sub": "L'outil d'analyse prédictive MMA de référence", 
-        "btn": "LANCER L'ANALYSE", "win": "VAINQUEUR PRÉDIT", "conf": "CONFIANCE", "meth": "PROBABILITÉS DE FINISH", 
+        "sub": "Intelligence Artificielle de Prédiction MMA", 
+        "btn": "LANCER L'ANALYSE TACTIQUE", "win": "VAINQUEUR PRÉDIT", "conf": "INDICE DE CONFIANCE", 
+        "meth": "SCÉNARIO DU COMBAT", 
         "tech": "COMPARATIF TECHNIQUE", "lbl": ["Taille", "Allonge", "Frappes/min", "Précision", "Takedowns/15m", "Déf. Lutte"], 
-        "cta": "PARIER SUR", "err": "Veuillez sélectionner deux combattants différents." 
+        "cta": "VOIR LA COTE DE", "err": "Veuillez sélectionner deux combattants différents.",
+        "keys": "CLÉS DU COMBAT", "adv": "Avantage", "more_acc": "Plus Précis", "more_vol": "Volume Supérieur", "grap_adv": "Menace Lutte", "phys_adv": "Avantage Allonge"
     },
     "en": { 
-        "sub": "The Ultimate MMA Predictive Analytics Tool", 
-        "btn": "ANALYZE FIGHT", "win": "PREDICTED WINNER", "conf": "CONFIDENCE", "meth": "FINISH PROBABILITY", 
+        "sub": "AI-Powered MMA Predictive Analytics", 
+        "btn": "RUN TACTICAL ANALYSIS", "win": "PREDICTED WINNER", "conf": "CONFIDENCE SCORE", 
+        "meth": "FIGHT SCENARIO", 
         "tech": "TECHNICAL BREAKDOWN", "lbl": ["Height", "Reach", "Strikes/min", "Accuracy", "Takedowns/15m", "Takedown Def"], 
-        "cta": "BET ON", "err": "Please select two different fighters." 
+        "cta": "SEE ODDS FOR", "err": "Please select two different fighters.",
+        "keys": "KEY FACTORS", "adv": "Advantage", "more_acc": "More Accurate", "more_vol": "Higher Volume", "grap_adv": "Grappling Threat", "phys_adv": "Reach Advantage"
     }
 }
 txt = T[st.session_state.lang]
 
-# --- 3. DATA (BASE DE DONNÉES LOCALE - ZERO ERREUR) ---
+# --- 3. DATA BASE (TOP TIER) ---
 DB = {
     "Jon Jones": {"Cat": "HW", "Taille": "6' 4\"", "Allonge": "84\"", "Coups": 4.30, "TD": 1.85, "DefLutte": 95, "Preci": 58},
     "Tom Aspinall": {"Cat": "HW", "Taille": "6' 5\"", "Allonge": "78\"", "Coups": 7.72, "TD": 3.50, "DefLutte": 100, "Preci": 66},
@@ -103,10 +107,10 @@ def to_cm(imp):
     if not imp or imp=="N/A": return "-"
     try:
         p = imp.replace('"','').split("'")
-        return f"{int((int(p[0])*30.48)+(int(p[1] if len(p)>1 else 0)*2.54))} cm"
+        inches = int(p[0])*30.48 + (int(p[1]) if len(p)>1 and p[1] else 0)*2.54
+        return f"{int(inches)} cm"
     except: return imp
 
-@st.cache_data
 def get_data(name):
     if name in DB:
         d = DB[name].copy(); d['Nom'] = name
@@ -122,65 +126,114 @@ def process_units(d, lang):
         except: pass
     return new_d
 
-def calc_algo(f1, f2):
-    s=50+(f1['Coups']-f2['Coups'])*5
-    if f1['TD']>2 and f2['DefLutte']<60: s+=12
-    if f2['TD']>2 and f1['DefLutte']<60: s-=12
-    s=max(10,min(90,s))
-    v=(f1['Coups']+f2['Coups'])+(f1['TD']+f2['TD'])*1.5
-    f=min(92,25+v*4.5)
-    sr=(f1['Coups']+f2['Coups'])/max(1,v)
-    k=int(f*sr); sb=int(f*(1-sr)); d=100-k-sb
-    return int(s),k,sb,d
+# --- 5. ALGORITHME AVANCÉ ---
+def advanced_algo(f1, f2):
+    score = 0
+    reasons = []
+    
+    # 1. STRIKING EFFECTIF (Volume x Précision) -> L'efficacité compte plus que le volume brut
+    # Score d'efficacité (ex: 7.0 coups * 0.60 precision = 4.2 coups connectés/min)
+    eff_1 = f1['Coups'] * (f1['Preci'] / 100.0)
+    eff_2 = f2['Coups'] * (f2['Preci'] / 100.0)
+    
+    diff_eff = eff_1 - eff_2
+    score += diff_eff * 10 # Poids important
+    
+    if diff_eff > 0.5: reasons.append(f"👊 {txt['more_acc']} ({f1['Nom']})")
+    elif diff_eff < -0.5: reasons.append(f"👊 {txt['more_acc']} ({f2['Nom']})")
+    
+    # 2. LUTTE (Menace vs Défense)
+    # Si F1 a un gros TD rate et F2 une mauvaise défense, gros avantage.
+    threat_1 = f1['TD'] * ((100 - f2['DefLutte']) / 100.0)
+    threat_2 = f2['TD'] * ((100 - f1['DefLutte']) / 100.0)
+    
+    diff_grap = threat_1 - threat_2
+    score += diff_grap * 8 # Poids grappling
+    
+    if threat_1 > 1.5: reasons.append(f"🤼 {txt['grap_adv']} ({f1['Nom']})")
+    elif threat_2 > 1.5: reasons.append(f"🤼 {txt['grap_adv']} ({f2['Nom']})")
+    
+    # 3. PHYSIQUE (Allonge)
+    # Convertir allonge en cm pour comparer (approx 1 inch = 2.54)
+    try:
+        r1 = float(f1['Allonge'].replace('"',''))
+        r2 = float(f2['Allonge'].replace('"',''))
+        if r1 > r2 + 2: 
+            score += 5
+            reasons.append(f"📏 {txt['phys_adv']} (+{int((r1-r2)*2.54)}cm)")
+        elif r2 > r1 + 2:
+            score -= 5
+            reasons.append(f"📏 {txt['phys_adv']} (+{int((r2-r1)*2.54)}cm)")
+    except: pass
 
-# --- 5. STYLE CSS (ÉPURÉ) ---
+    # Normalisation Score (50 = 50/50)
+    final_score = 50 + score
+    final_score = max(10, min(90, final_score))
+    
+    # Calcul Finish
+    violence = (eff_1 + eff_2) + (threat_1 + threat_2)*1.5
+    finish_prob = min(95, 20 + violence * 8)
+    
+    # Répartition méthode
+    strike_ratio = (eff_1 + eff_2) / max(0.1, (eff_1 + eff_2 + threat_1 + threat_2))
+    ko = int(finish_prob * strike_ratio)
+    sub = int(finish_prob * (1 - strike_ratio))
+    dec = 100 - ko - sub
+    
+    return int(final_score), ko, sub, dec, reasons
+
+# --- 6. CSS (CENTRÉ & CLEAN) ---
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;800;900&display=swap');
     .stApp { background-color: #0f172a; background-image: radial-gradient(at 50% 0%, rgba(46, 204, 113, 0.1) 0px, transparent 60%); font-family: 'Montserrat', sans-serif; }
     h1,h2,div,p{font-family:'Montserrat',sans-serif!important;}
     
-    /* Supprimer les cadres autour des inputs */
-    .stSelectbox > div > div {
-        background-color: transparent !important;
-        border: none !important;
-    }
-    .stSelectbox div[data-baseweb="select"] > div {
-        background-color: #1e293b !important;
-        border: 1px solid rgba(255,255,255,0.1) !important;
-        color: white !important;
-        border-radius: 12px;
-    }
+    /* Centrage Logo & Titre */
+    .header-container { display: flex; flex-direction: column; align-items: center; justify-content: center; margin-bottom: 20px; }
+    .logo-img { max-height: 80px; margin-bottom: 10px; }
+    
+    /* Inputs sans cadre */
+    .stSelectbox > div > div { background-color: transparent !important; border: none !important; }
+    .stSelectbox div[data-baseweb="select"] > div { background-color: #1e293b !important; border: 1px solid rgba(255,255,255,0.1) !important; color: white !important; border-radius: 12px; }
 
-    /* Cards pour résultats uniquement */
+    /* Cards */
     .glass-card { background: rgba(30, 41, 59, 0.6); backdrop-filter: blur(12px); border-radius: 20px; padding: 24px; border: 1px solid rgba(255,255,255,0.08); box-shadow: 0 10px 30px -5px rgba(0,0,0,0.4); margin-bottom: 20px; }
     
-    div.stButton>button { background: #2ecc71!important; color: #020617!important; border-radius: 12px; padding: 18px; font-weight: 900; text-transform: uppercase; border: none; width: 100%; }
+    div.stButton>button { background: #2ecc71!important; color: #020617!important; border-radius: 12px; padding: 18px; font-weight: 900; text-transform: uppercase; border: none; width: 100%; transition: 0.3s; }
+    div.stButton>button:hover { transform: scale(1.02); }
+    
     .bar-bg { width: 100%; height: 8px; background: rgba(255,255,255,0.1); border-radius: 4px; overflow: hidden; display: flex; margin-top: 5px; }
     .bar-l { height: 100%; background: #38bdf8; } .bar-r { height: 100%; background: #f43f5e; }
     .finish-cont { width: 100%; height: 14px; background: #1e293b; border-radius: 7px; overflow: hidden; display: flex; margin-top: 10px; }
+    
+    .reason-tag { background: rgba(255,255,255,0.1); padding: 5px 10px; border-radius: 8px; font-size: 0.75rem; color: #cbd5e1; display: inline-block; margin: 2px; border: 1px solid rgba(255,255,255,0.1); }
 </style>
 """, unsafe_allow_html=True)
 
-# --- 6. INTERFACE ---
-c_t, c_l = st.columns([5,1])
-with c_t: 
-    # LOGO REMPLACE LE TITRE
-    # IMPORTANT: Assure-toi que logo.png est dans le même dossier !
-    if os.path.exists("logo.png"):
-        st.image("logo.png", width=350)
-    else:
-        st.warning("⚠️ Image 'logo.png' introuvable. Ajoutez-la dans le dossier.")
-        st.markdown(f"<h1 style='color:white; font-size:2rem;'>CAGEMETRICS <span style='color:#2ecc71'>PRO</span></h1>", unsafe_allow_html=True)
-    st.caption(txt['sub'])
+# --- 7. UI ---
 
-with c_l: 
+# HEADER CENTRÉ
+c_empty, c_mid, c_lang = st.columns([1, 6, 1])
+with c_mid:
+    if os.path.exists("logo.png"):
+        st.markdown(
+            f"""
+            <div class="header-container">
+                <img src="data:image/png;base64,{st.image("logo.png", output_format="PNG")}" class="logo-img" style="display:none;"> </div>
+            """, unsafe_allow_html=True
+        )
+        st.image("logo.png", width=300) # Simple Streamlit Image centree par colonne
+    else:
+        st.markdown("<h1 style='text-align:center; color:white;'>CAGEMETRICS <span style='color:#2ecc71'>PRO</span></h1>", unsafe_allow_html=True)
+    st.markdown(f"<div style='text-align:center; color:#94a3b8; font-size:0.9rem; margin-top:-10px;'>{txt['sub']}</div>", unsafe_allow_html=True)
+
+with c_lang:
     if st.button("🇫🇷" if st.session_state.lang == 'en' else "🇺🇸"): toggle(); st.rerun()
 
-# --- INPUTS (SANS CADRE) ---
-# Espace vertical
 st.markdown("<br>", unsafe_allow_html=True)
 
+# INPUTS
 cats_map = {"Heavyweight (HW)": "HW", "Light Heavyweight (LHW)": "LHW", "Middleweight (MW)": "MW", "Welterweight (WW)": "WW", "Lightweight (LW)": "LW", "Featherweight (FW)": "FW", "Bantamweight (BW)": "BW", "Show All": "ALL"}
 cat_name = st.selectbox("", list(cats_map.keys()), label_visibility="collapsed")
 cat_code = cats_map[cat_name]
@@ -188,42 +241,53 @@ cat_code = cats_map[cat_name]
 filtered_roster = get_filtered_roster(cat_code)
 
 c1,c2,c3=st.columns([1,0.1,1])
-def get_idx(lst, name): return lst.index(name) if name in lst else 0
 idx_a = 0
 idx_b = 1 if len(filtered_roster) > 1 else 0
-
 f_a = c1.selectbox("A", filtered_roster, index=idx_a, label_visibility="collapsed", key="fa")
 c2.markdown("<div style='text-align:center; padding-top:10px; font-weight:900; color:white;'>VS</div>",unsafe_allow_html=True)
 f_b = c3.selectbox("B", filtered_roster, index=idx_b, label_visibility="collapsed", key="fb")
 
 st.markdown("<br>", unsafe_allow_html=True)
 
-# --- BOUTON CENTRÉ ---
-col_pad1, col_btn, col_pad2 = st.columns([1, 2, 1])
-with col_btn:
-    if st.button(txt['btn'], use_container_width=True):
-        if f_a==f_b: st.warning(txt['err'])
-        else:
-            with st.spinner("..."):
-                raw_s1 = get_data(f_a)
-                raw_s2 = get_data(f_b)
-                s1 = process_units(raw_s1, st.session_state.lang)
-                s2 = process_units(raw_s2, st.session_state.lang)
+# BOUTON CENTRÉ
+col_x, col_y, col_z = st.columns([1, 4, 1])
+with col_y:
+    analyze = st.button(txt['btn'], use_container_width=True)
+
+if analyze:
+    if f_a==f_b: st.warning(txt['err'])
+    else:
+        with st.spinner("..."):
+            raw_s1 = get_data(f_a)
+            raw_s2 = get_data(f_b)
+            s1 = process_units(raw_s1, st.session_state.lang)
+            s2 = process_units(raw_s2, st.session_state.lang)
+            
+            if s1 and s2:
+                sc,k,sb,d, reasons = advanced_algo(raw_s1, raw_s2) # Use raw data for calc
+                w = s1['Nom'] if sc>=50 else s2['Nom']
+                cf = sc if sc>=50 else 100-sc
                 
-                if s1 and s2:
-                    sc,k,sb,d=calc_algo(s1,s2); w=s1['Nom'] if sc>=50 else s2['Nom']; cf=sc if sc>=50 else 100-sc
-                    
-                    st.markdown(f"""<div class="glass-card" style="text-align:center; border:2px solid #2ecc71; background:rgba(46, 204, 113, 0.05);"><div style="color:#94a3b8; font-size:0.7rem; font-weight:700; letter-spacing:1px; margin-bottom:5px;">{txt['win']}</div><div style="font-size:2.2rem; font-weight:900; color:white; line-height:1; margin-bottom:10px;">{w}</div><span style="background:#2ecc71; color:#020617; padding:4px 12px; border-radius:20px; font-weight:800; font-size:0.8rem;">{cf}% {txt['conf']}</span></div>""",unsafe_allow_html=True)
-                    st.markdown(f"""<div class="glass-card"><div style="text-align:center; font-weight:800; color:white;">{txt['meth']}</div><div class="finish-cont"><div style="width:{k}%; background:#ef4444;"></div><div style="width:{sb}%; background:#eab308;"></div><div style="width:{d}%; background:#3b82f6;"></div></div><div style="display:flex; justify-content:space-between; margin-top:8px; font-size:0.7rem; font-weight:700;"><span style="color:#ef4444">KO/TKO {k}%</span><span style="color:#eab308">SUB {sb}%</span><span style="color:#3b82f6">DEC {d}%</span></div></div>""",unsafe_allow_html=True)
-                    
-                    st.markdown(f'<div class="glass-card"><div style="text-align:center; color:#94a3b8; font-weight:700; margin-bottom:15px;">{txt["tech"]}</div>',unsafe_allow_html=True)
-                    def stat_vis(l,v1,v2):
-                        n1=clean_num(v1); n2=clean_num(v2); tot=max(n1+n2,0.1); p1=(n1/tot)*100; p2=(n2/tot)*100
-                        st.markdown(f"""<div style="margin-bottom:12px;"><div style="display:flex; justify-content:space-between; font-weight:700; font-size:0.9rem;"><span style="color:#38bdf8">{v1}</span><span style="color:#f43f5e">{v2}</span></div><div class="bar-bg"><div class="bar-l" style="width:{p1}%"></div><div class="bar-r" style="width:{p2}%"></div></div><div style="text-align:center; font-size:0.7rem; color:#94a3b8; font-weight:700; text-transform:uppercase; margin-top:2px;">{l}</div></div>""",unsafe_allow_html=True)
-                    l=txt['lbl']
-                    stat_vis(l[0],s1['Taille'],s2['Taille']); stat_vis(l[1],s1['Allonge'],s2['Allonge']); stat_vis(l[2],s1['Coups'],s2['Coups'])
-                    stat_vis(l[3],f"{s1['Preci']}%",f"{s2['Preci']}%"); stat_vis(l[4],s1['TD'],s2['TD']); stat_vis(l[5],f"{s1['DefLutte']}%",f"{s2['DefLutte']}%")
-                    st.markdown('</div>',unsafe_allow_html=True)
-                    
-                    st.markdown(f"""<a href="https://www.unibet.fr/sport/mma" target="_blank" style="text-decoration:none;"><button style="width:100%; background:#fc4c02; color:white; border:none; padding:16px; border-radius:12px; font-weight:800; cursor:pointer;">{txt['cta']} {w}</button></a>""",unsafe_allow_html=True)
-                else: st.error("Data error.")
+                # 1. WINNER
+                st.markdown(f"""<div class="glass-card" style="text-align:center; border:2px solid #2ecc71; background:rgba(46, 204, 113, 0.05);"><div style="color:#94a3b8; font-size:0.7rem; font-weight:700; letter-spacing:1px; margin-bottom:5px;">{txt['win']}</div><div style="font-size:2.5rem; font-weight:900; color:white; line-height:1; margin-bottom:10px; text-transform:uppercase;">{w}</div><span style="background:#2ecc71; color:#020617; padding:4px 12px; border-radius:20px; font-weight:800; font-size:0.8rem;">{cf}% {txt['conf']}</span></div>""",unsafe_allow_html=True)
+                
+                # 2. TACTICAL KEYS (ARGUMENTS)
+                if reasons:
+                    html_reasons = "".join([f"<span class='reason-tag'>{r}</span>" for r in reasons])
+                    st.markdown(f"""<div class="glass-card"><div style="text-align:center; font-weight:800; color:white; margin-bottom:10px;">{txt['keys']}</div><div style="text-align:center;">{html_reasons}</div></div>""", unsafe_allow_html=True)
+
+                # 3. SCENARIO
+                st.markdown(f"""<div class="glass-card"><div style="text-align:center; font-weight:800; color:white;">{txt['meth']}</div><div class="finish-cont"><div style="width:{k}%; background:#ef4444;"></div><div style="width:{sb}%; background:#eab308;"></div><div style="width:{d}%; background:#3b82f6;"></div></div><div style="display:flex; justify-content:space-between; margin-top:8px; font-size:0.7rem; font-weight:700;"><span style="color:#ef4444">KO/TKO {k}%</span><span style="color:#eab308">SUB {sb}%</span><span style="color:#3b82f6">DEC {d}%</span></div></div>""",unsafe_allow_html=True)
+                
+                # 4. TECH
+                st.markdown(f'<div class="glass-card"><div style="text-align:center; color:#94a3b8; font-weight:700; margin-bottom:15px;">{txt["tech"]}</div>',unsafe_allow_html=True)
+                def stat_vis(l,v1,v2):
+                    n1=clean_num(v1); n2=clean_num(v2); tot=max(n1+n2,0.1); p1=(n1/tot)*100; p2=(n2/tot)*100
+                    st.markdown(f"""<div style="margin-bottom:12px;"><div style="display:flex; justify-content:space-between; font-weight:700; font-size:0.9rem;"><span style="color:#38bdf8">{v1}</span><span style="color:#f43f5e">{v2}</span></div><div class="bar-bg"><div class="bar-l" style="width:{p1}%"></div><div class="bar-r" style="width:{p2}%"></div></div><div style="text-align:center; font-size:0.7rem; color:#94a3b8; font-weight:700; text-transform:uppercase; margin-top:2px;">{l}</div></div>""",unsafe_allow_html=True)
+                l=txt['lbl']
+                stat_vis(l[0],s1['Taille'],s2['Taille']); stat_vis(l[1],s1['Allonge'],s2['Allonge']); stat_vis(l[2],s1['Coups'],s2['Coups'])
+                stat_vis(l[3],f"{s1['Preci']}%",f"{s2['Preci']}%"); stat_vis(l[4],s1['TD'],s2['TD']); stat_vis(l[5],f"{s1['DefLutte']}%",f"{s2['DefLutte']}%")
+                st.markdown('</div>',unsafe_allow_html=True)
+                
+                st.markdown(f"""<a href="https://www.unibet.fr/sport/mma" target="_blank" style="text-decoration:none;"><button style="width:100%; background:#fc4c02; color:white; border:none; padding:16px; border-radius:12px; font-weight:800; cursor:pointer;">{txt['cta']} {w}</button></a>""",unsafe_allow_html=True)
+            else: st.error("Data error.")
