@@ -3,7 +3,7 @@ import requests
 import os
 
 # --- 1. CONFIGURATION ---
-st.set_page_config(page_title="CageMetrics Elite", page_icon="🩸", layout="centered")
+st.set_page_config(page_title="CageMetrics Ultimate", page_icon="🦁", layout="centered")
 
 # --- 2. GESTION LANGUE ---
 if 'lang' not in st.session_state: st.session_state.lang = 'fr'
@@ -11,178 +11,210 @@ def toggle(): st.session_state.lang = 'en' if st.session_state.lang == 'fr' else
 
 T = {
     "fr": { 
-        "sub": "Moteur de Simulation Réaliste (Stats + Physique + Dégâts)", 
-        "btn": "LANCER LA SIMULATION", "win": "VAINQUEUR PRÉDIT", "conf": "INDICE DE CONFIANCE", 
+        "sub": "Algorithme Grandmaster : Analyse P4P & Styles", 
+        "btn": "LANCER L'ANALYSE TACTIQUE", "win": "VAINQUEUR PRÉDIT", "conf": "INDICE DE CONFIANCE", 
         "meth": "SCÉNARIO DU COMBAT", 
-        "tech": "ATTRIBUTS CLÉS", "lbl": ["Puissance KO", "Menton (Résistance)", "Lutte Offensive", "Défense Lutte", "Cardio/Volume", "Allonge"], 
+        "tech": "COMPARATIF ELITE", "lbl": ["Puissance", "Menton", "Grappling", "Défense Sol", "Cardio", "XP/IQ"], 
         "cta": "VOIR LA COTE", "err": "Erreur : Sélectionnez deux combattants différents.",
-        "keys": "FACTEURS X",
+        "keys": "ANALYSE DE L'EXPERTS",
         "reasons": {
-            "ko_power": "☠️ PUISSANCE DE KO LÉTALE",
-            "chin": "🛡️ MENTON EN GRANITE",
-            "glass": "⚠️ MENTON SUSPECT DÉTECTÉ",
-            "grap": "🤼 DOMINATION LUTTE",
-            "volume": "🥊 VOLUME SUPÉRIEUR",
-            "diff_w": "⚖️ AVANTAGE GABARIT"
+            "tier_gap": "👑 ÉCART DE NIVEAU (P4P KING)",
+            "style_sambo": "🦅 DOMINATION DAGHESTANI (SAMBO)",
+            "style_sniper": "🎯 PRÉCISION D'ÉLITE",
+            "chin_issue": "⚠️ MENTON FRAGILE DÉTECTÉ",
+            "cardio_gap": "🫀 AVANTAGE CARDIO 5 ROUNDS",
+            "phys_gap": "🦍 AVANTAGE PHYSIQUE MASSIF"
         }
     },
     "en": { 
-        "sub": "Realistic Simulation Engine (Stats + Physics + Damage)", 
-        "btn": "RUN SIMULATION", "win": "PREDICTED WINNER", "conf": "CONFIDENCE SCORE", 
+        "sub": "Grandmaster Algorithm: P4P & Style Analysis", 
+        "btn": "RUN TACTICAL ANALYSIS", "win": "PREDICTED WINNER", "conf": "CONFIDENCE SCORE", 
         "meth": "FIGHT SCENARIO", 
-        "tech": "KEY ATTRIBUTES", "lbl": ["KO Power", "Chin (Durability)", "Wrestling Off", "Wrestling Def", "Cardio/Volume", "Reach"], 
+        "tech": "ELITE COMPARISON", "lbl": ["Power", "Chin", "Grappling", "Ground Def", "Cardio", "XP/IQ"], 
         "cta": "SEE ODDS", "err": "Error: Select two different fighters.",
-        "keys": "X-FACTORS",
+        "keys": "EXPERT ANALYSIS",
         "reasons": {
-            "ko_power": "☠️ LETHAL KO POWER",
-            "chin": "🛡️ GRANITE CHIN",
-            "glass": "⚠️ SUSPECT CHIN DETECTED",
-            "grap": "🤼 WRESTLING DOMINANCE",
-            "volume": "🥊 HIGHER VOLUME",
-            "diff_w": "⚖️ SIZE ADVANTAGE"
+            "tier_gap": "👑 LEVEL GAP (P4P KING)",
+            "style_sambo": "🦅 DAGESTANI DOMINANCE (SAMBO)",
+            "style_sniper": "🎯 ELITE PRECISION",
+            "chin_issue": "⚠️ GLASS CHIN DETECTED",
+            "cardio_gap": "🫀 5-ROUND CARDIO EDGE",
+            "phys_gap": "🦍 MASSIVE PHYSICAL EDGE"
         }
     }
 }
 txt = T[st.session_state.lang]
 
-# --- 3. DATABASE AVANCÉE (STATS + HIDDEN ATTRIBUTES) ---
-# Pow = Puissance (0-100), Chin = Résistance (0-100)
+# --- 3. DATABASE GRANDMASTER (TIERS & STYLES) ---
+# Tier 1 = GOAT/P4P | Tier 2 = Champ | Tier 3 = Top 5
 DB = {
     # HW
-    "Jon Jones": {"Cat": "HW", "Taille": "193 cm", "Allonge": "213 cm", "Coups": 4.30, "TD": 1.9, "DefLutte": 95, "Preci": 58, "Pow": 85, "Chin": 98},
-    "Tom Aspinall": {"Cat": "HW", "Taille": "196 cm", "Allonge": "198 cm", "Coups": 7.72, "TD": 3.5, "DefLutte": 100, "Preci": 66, "Pow": 96, "Chin": 90},
-    "Ciryl Gane": {"Cat": "HW", "Taille": "193 cm", "Allonge": "206 cm", "Coups": 5.11, "TD": 0.6, "DefLutte": 45, "Preci": 59, "Pow": 88, "Chin": 92},
-    "Stipe Miocic": {"Cat": "HW", "Taille": "193 cm", "Allonge": "203 cm", "Coups": 4.82, "TD": 1.9, "DefLutte": 70, "Preci": 53, "Pow": 90, "Chin": 85},
-    "Alexander Volkov": {"Cat": "HW", "Taille": "201 cm", "Allonge": "203 cm", "Coups": 5.10, "TD": 0.6, "DefLutte": 75, "Preci": 57, "Pow": 88, "Chin": 82},
-    "Sergei Pavlovich": {"Cat": "HW", "Taille": "191 cm", "Allonge": "213 cm", "Coups": 8.20, "TD": 0.0, "DefLutte": 75, "Preci": 48, "Pow": 99, "Chin": 88},
-    "Jailton Almeida": {"Cat": "HW", "Taille": "191 cm", "Allonge": "201 cm", "Coups": 2.50, "TD": 6.4, "DefLutte": 75, "Preci": 55, "Pow": 75, "Chin": 85},
+    "Jon Jones": {"Cat": "HW", "Tier": 1, "Style": "Complete", "Taille": "193 cm", "Allonge": "215 cm", "Str": 88, "Grap": 98, "Chin": 99, "Cardio": 95, "IQ": 100},
+    "Tom Aspinall": {"Cat": "HW", "Tier": 2, "Style": "Hybrid", "Taille": "196 cm", "Allonge": "198 cm", "Str": 96, "Grap": 85, "Chin": 90, "Cardio": 88, "IQ": 90},
+    "Ciryl Gane": {"Cat": "HW", "Tier": 3, "Style": "Striker", "Taille": "193 cm", "Allonge": "206 cm", "Str": 95, "Grap": 60, "Chin": 92, "Cardio": 90, "IQ": 88},
+    "Stipe Miocic": {"Cat": "HW", "Tier": 2, "Style": "Wrestler-Boxer", "Taille": "193 cm", "Allonge": "203 cm", "Str": 85, "Grap": 88, "Chin": 80, "Cardio": 85, "IQ": 95},
+    "Alexander Volkov": {"Cat": "HW", "Tier": 3, "Style": "Striker", "Taille": "201 cm", "Allonge": "203 cm", "Str": 88, "Grap": 75, "Chin": 85, "Cardio": 88, "IQ": 85},
+    "Sergei Pavlovich": {"Cat": "HW", "Tier": 3, "Style": "Brawler", "Taille": "191 cm", "Allonge": "213 cm", "Str": 98, "Grap": 65, "Chin": 88, "Cardio": 70, "IQ": 80},
+    "Jailton Almeida": {"Cat": "HW", "Tier": 3, "Style": "BJJ", "Taille": "191 cm", "Allonge": "201 cm", "Str": 65, "Grap": 95, "Chin": 80, "Cardio": 82, "IQ": 85},
     
     # LHW
-    "Alex Pereira": {"Cat": "LHW", "Taille": "193 cm", "Allonge": "200 cm", "Coups": 5.10, "TD": 0.2, "DefLutte": 70, "Preci": 62, "Pow": 99, "Chin": 88},
-    "Jiri Prochazka": {"Cat": "LHW", "Taille": "191 cm", "Allonge": "203 cm", "Coups": 5.75, "TD": 0.6, "DefLutte": 68, "Preci": 56, "Pow": 94, "Chin": 80},
-    "Magomed Ankalaev": {"Cat": "LHW", "Taille": "191 cm", "Allonge": "191 cm", "Coups": 3.60, "TD": 1.1, "DefLutte": 86, "Preci": 53, "Pow": 89, "Chin": 92},
-    "Jan Blachowicz": {"Cat": "LHW", "Taille": "188 cm", "Allonge": "198 cm", "Coups": 3.41, "TD": 1.2, "DefLutte": 70, "Preci": 49, "Pow": 92, "Chin": 93},
-    "Jamahal Hill": {"Cat": "LHW", "Taille": "193 cm", "Allonge": "201 cm", "Coups": 7.31, "TD": 0.0, "DefLutte": 65, "Preci": 54, "Pow": 93, "Chin": 85},
-    "Khalil Rountree Jr.": {"Cat": "LHW", "Taille": "185 cm", "Allonge": "194 cm", "Coups": 3.80, "TD": 0.0, "DefLutte": 58, "Preci": 39, "Pow": 95, "Chin": 82},
-
+    "Alex Pereira": {"Cat": "LHW", "Tier": 1, "Style": "Kickboxer", "Taille": "193 cm", "Allonge": "200 cm", "Str": 99, "Grap": 65, "Chin": 88, "Cardio": 88, "IQ": 92},
+    "Magomed Ankalaev": {"Cat": "LHW", "Tier": 2, "Style": "Dagestani", "Taille": "191 cm", "Allonge": "191 cm", "Str": 85, "Grap": 92, "Chin": 92, "Cardio": 90, "IQ": 88},
+    "Jiri Prochazka": {"Cat": "LHW", "Tier": 2, "Style": "Chaos", "Taille": "191 cm", "Allonge": "203 cm", "Str": 94, "Grap": 70, "Chin": 80, "Cardio": 92, "IQ": 82},
+    "Jamahal Hill": {"Cat": "LHW", "Taille": "193 cm", "Allonge": "201 cm", "Tier": 3, "Style": "Striker", "Str": 92, "Grap": 65, "Chin": 85, "Cardio": 85, "IQ": 85},
+    
     # MW
-    "Dricus Du Plessis": {"Cat": "MW", "Taille": "185 cm", "Allonge": "193 cm", "Coups": 6.49, "TD": 2.7, "DefLutte": 55, "Preci": 50, "Pow": 92, "Chin": 94},
-    "Sean Strickland": {"Cat": "MW", "Taille": "185 cm", "Allonge": "193 cm", "Coups": 5.82, "TD": 1.0, "DefLutte": 85, "Preci": 41, "Pow": 78, "Chin": 92},
-    "Israel Adesanya": {"Cat": "MW", "Taille": "193 cm", "Allonge": "203 cm", "Coups": 3.90, "TD": 0.1, "DefLutte": 77, "Preci": 49, "Pow": 88, "Chin": 85},
-    "Robert Whittaker": {"Cat": "MW", "Taille": "183 cm", "Allonge": "185 cm", "Coups": 4.50, "TD": 0.8, "DefLutte": 82, "Preci": 42, "Pow": 85, "Chin": 80},
-    "Khamzat Chimaev": {"Cat": "MW", "Taille": "188 cm", "Allonge": "191 cm", "Coups": 5.72, "TD": 4.0, "DefLutte": 100, "Preci": 59, "Pow": 90, "Chin": 90},
-    "Nassourdine Imavov": {"Cat": "MW", "Taille": "191 cm", "Allonge": "191 cm", "Coups": 4.60, "TD": 1.1, "DefLutte": 76, "Preci": 54, "Pow": 82, "Chin": 88},
+    "Dricus Du Plessis": {"Cat": "MW", "Tier": 2, "Style": "Brawler-Grap", "Taille": "185 cm", "Allonge": "193 cm", "Str": 88, "Grap": 85, "Chin": 95, "Cardio": 98, "IQ": 88},
+    "Sean Strickland": {"Cat": "MW", "Tier": 2, "Style": "Boxer", "Taille": "185 cm", "Allonge": "193 cm", "Str": 90, "Grap": 70, "Chin": 92, "Cardio": 99, "IQ": 90},
+    "Israel Adesanya": {"Cat": "MW", "Tier": 1, "Style": "Sniper", "Taille": "193 cm", "Allonge": "203 cm", "Str": 97, "Grap": 68, "Chin": 85, "Cardio": 92, "IQ": 98},
+    "Robert Whittaker": {"Cat": "MW", "Tier": 2, "Style": "Complete", "Taille": "183 cm", "Allonge": "185 cm", "Str": 90, "Grap": 82, "Chin": 80, "Cardio": 90, "IQ": 92},
+    "Khamzat Chimaev": {"Cat": "MW", "Tier": 1, "Style": "Wrestler", "Taille": "188 cm", "Allonge": "191 cm", "Str": 85, "Grap": 99, "Chin": 90, "Cardio": 80, "IQ": 88},
+    "Nassourdine Imavov": {"Cat": "MW", "Tier": 3, "Style": "Striker", "Taille": "191 cm", "Allonge": "191 cm", "Str": 88, "Grap": 75, "Chin": 88, "Cardio": 85, "IQ": 85},
 
     # WW
-    "Belal Muhammad": {"Cat": "WW", "Taille": "180 cm", "Allonge": "183 cm", "Coups": 4.55, "TD": 2.2, "DefLutte": 93, "Preci": 43, "Pow": 70, "Chin": 92},
-    "Leon Edwards": {"Cat": "WW", "Taille": "183 cm", "Allonge": "188 cm", "Coups": 2.80, "TD": 1.3, "DefLutte": 70, "Preci": 53, "Pow": 85, "Chin": 88},
-    "Kamaru Usman": {"Cat": "WW", "Taille": "183 cm", "Allonge": "193 cm", "Coups": 4.46, "TD": 2.8, "DefLutte": 97, "Preci": 52, "Pow": 86, "Chin": 90},
-    "Shavkat Rakhmonov": {"Cat": "WW", "Taille": "185 cm", "Allonge": "196 cm", "Coups": 4.45, "TD": 1.5, "DefLutte": 100, "Preci": 59, "Pow": 91, "Chin": 95},
-    "Ian Machado Garry": {"Cat": "WW", "Taille": "191 cm", "Allonge": "188 cm", "Coups": 6.67, "TD": 0.0, "DefLutte": 69, "Preci": 56, "Pow": 82, "Chin": 85},
+    "Belal Muhammad": {"Cat": "WW", "Tier": 2, "Style": "Wrestler-Pressure", "Taille": "180 cm", "Allonge": "183 cm", "Str": 82, "Grap": 90, "Chin": 92, "Cardio": 98, "IQ": 95},
+    "Shavkat Rakhmonov": {"Cat": "WW", "Tier": 1, "Style": "Complete", "Taille": "185 cm", "Allonge": "196 cm", "Str": 90, "Grap": 95, "Chin": 98, "Cardio": 95, "IQ": 92},
+    "Leon Edwards": {"Cat": "WW", "Tier": 2, "Style": "Sniper", "Taille": "183 cm", "Allonge": "188 cm", "Str": 94, "Grap": 80, "Chin": 88, "Cardio": 90, "IQ": 90},
+    "Kamaru Usman": {"Cat": "WW", "Tier": 2, "Style": "Wrestler", "Taille": "183 cm", "Allonge": "193 cm", "Str": 85, "Grap": 94, "Chin": 88, "Cardio": 90, "IQ": 95},
+    "Jack Della Maddalena": {"Cat": "WW", "Tier": 3, "Style": "Boxer", "Taille": "180 cm", "Allonge": "185 cm", "Str": 93, "Grap": 65, "Chin": 92, "Cardio": 90, "IQ": 88},
+    "Ian Machado Garry": {"Cat": "WW", "Tier": 3, "Style": "Striker", "Taille": "191 cm", "Allonge": "188 cm", "Str": 89, "Grap": 65, "Chin": 85, "Cardio": 88, "IQ": 85},
 
     # LW
-    "Islam Makhachev": {"Cat": "LW", "Taille": "178 cm", "Allonge": "178 cm", "Coups": 2.46, "TD": 3.2, "DefLutte": 90, "Preci": 60, "Pow": 84, "Chin": 92},
-    "Charles Oliveira": {"Cat": "LW", "Taille": "178 cm", "Allonge": "188 cm", "Coups": 3.50, "TD": 2.3, "DefLutte": 55, "Preci": 53, "Pow": 90, "Chin": 78},
-    "Justin Gaethje": {"Cat": "LW", "Taille": "180 cm", "Allonge": "178 cm", "Coups": 7.35, "TD": 0.1, "DefLutte": 75, "Preci": 60, "Pow": 96, "Chin": 85},
-    "Dustin Poirier": {"Cat": "LW", "Taille": "175 cm", "Allonge": "183 cm", "Coups": 5.45, "TD": 1.4, "DefLutte": 63, "Preci": 51, "Pow": 91, "Chin": 88},
-    "Benoit Saint Denis": {"Cat": "LW", "Taille": "180 cm", "Allonge": "185 cm", "Coups": 5.70, "TD": 4.6, "DefLutte": 68, "Preci": 54, "Pow": 86, "Chin": 85},
-    "Conor McGregor": {"Cat": "LW", "Taille": "175 cm", "Allonge": "188 cm", "Coups": 5.32, "TD": 0.7, "DefLutte": 66, "Preci": 49, "Pow": 95, "Chin": 80},
-    "Arman Tsarukyan": {"Cat": "LW", "Taille": "170 cm", "Allonge": "183 cm", "Coups": 3.80, "TD": 3.4, "DefLutte": 75, "Preci": 48, "Pow": 85, "Chin": 90},
-
+    "Islam Makhachev": {"Cat": "LW", "Tier": 1, "Style": "Sambo", "Taille": "178 cm", "Allonge": "178 cm", "Str": 88, "Grap": 99, "Chin": 92, "Cardio": 96, "IQ": 98},
+    "Arman Tsarukyan": {"Cat": "LW", "Tier": 2, "Style": "Wrestler", "Taille": "170 cm", "Allonge": "183 cm", "Str": 85, "Grap": 94, "Chin": 90, "Cardio": 95, "IQ": 90},
+    "Charles Oliveira": {"Cat": "LW", "Tier": 2, "Style": "BJJ", "Taille": "178 cm", "Allonge": "188 cm", "Str": 90, "Grap": 98, "Chin": 78, "Cardio": 85, "IQ": 92},
+    "Justin Gaethje": {"Cat": "LW", "Tier": 2, "Style": "Brawler", "Taille": "180 cm", "Allonge": "178 cm", "Str": 96, "Grap": 75, "Chin": 85, "Cardio": 88, "IQ": 85},
+    "Dustin Poirier": {"Cat": "LW", "Tier": 2, "Style": "Boxer", "Taille": "175 cm", "Allonge": "183 cm", "Str": 94, "Grap": 70, "Chin": 90, "Cardio": 90, "IQ": 95},
+    "Benoit Saint Denis": {"Cat": "LW", "Tier": 3, "Style": "Aggressive", "Taille": "180 cm", "Allonge": "185 cm", "Str": 85, "Grap": 88, "Chin": 85, "Cardio": 90, "IQ": 80},
+    "Michael Chandler": {"Cat": "LW", "Tier": 3, "Style": "Explosive", "Taille": "173 cm", "Allonge": "180 cm", "Str": 88, "Grap": 85, "Chin": 80, "Cardio": 80, "IQ": 75},
+    
     # FW
-    "Ilia Topuria": {"Cat": "FW", "Taille": "170 cm", "Allonge": "175 cm", "Coups": 4.40, "TD": 1.9, "DefLutte": 92, "Preci": 46, "Pow": 97, "Chin": 95},
-    "Max Holloway": {"Cat": "FW", "Taille": "180 cm", "Allonge": "175 cm", "Coups": 7.17, "TD": 0.3, "DefLutte": 84, "Preci": 48, "Pow": 75, "Chin": 99},
-    "Alexander Volkanovski": {"Cat": "FW", "Taille": "168 cm", "Allonge": "180 cm", "Coups": 6.19, "TD": 1.8, "DefLutte": 70, "Preci": 57, "Pow": 86, "Chin": 90},
-    "Diego Lopes": {"Cat": "FW", "Taille": "180 cm", "Allonge": "183 cm", "Coups": 3.20, "TD": 1.0, "DefLutte": 45, "Preci": 52, "Pow": 90, "Chin": 85},
+    "Ilia Topuria": {"Cat": "FW", "Tier": 1, "Style": "Complete", "Taille": "170 cm", "Allonge": "175 cm", "Str": 97, "Grap": 90, "Chin": 98, "Cardio": 92, "IQ": 95},
+    "Max Holloway": {"Cat": "FW", "Tier": 1, "Style": "Boxer", "Taille": "180 cm", "Allonge": "175 cm", "Str": 95, "Grap": 75, "Chin": 100, "Cardio": 99, "IQ": 96},
+    "Alexander Volkanovski": {"Cat": "FW", "Tier": 2, "Style": "Complete", "Taille": "168 cm", "Allonge": "180 cm", "Str": 92, "Grap": 88, "Chin": 88, "Cardio": 95, "IQ": 98},
+    "Yair Rodriguez": {"Cat": "FW", "Tier": 3, "Style": "Kicker", "Taille": "180 cm", "Allonge": "180 cm", "Str": 92, "Grap": 60, "Chin": 85, "Cardio": 85, "IQ": 85},
+    "Diego Lopes": {"Cat": "FW", "Tier": 3, "Style": "BJJ-Power", "Taille": "180 cm", "Allonge": "183 cm", "Str": 88, "Grap": 92, "Chin": 88, "Cardio": 85, "IQ": 85},
 
     # BW
-    "Sean O'Malley": {"Cat": "BW", "Taille": "180 cm", "Allonge": "183 cm", "Coups": 7.25, "TD": 0.4, "DefLutte": 65, "Preci": 61, "Pow": 93, "Chin": 88},
-    "Merab Dvalishvili": {"Cat": "BW", "Taille": "168 cm", "Allonge": "173 cm", "Coups": 4.50, "TD": 6.5, "DefLutte": 80, "Preci": 45, "Pow": 70, "Chin": 95},
-    "Petr Yan": {"Cat": "BW", "Taille": "170 cm", "Allonge": "170 cm", "Coups": 5.03, "TD": 1.7, "DefLutte": 85, "Preci": 53, "Pow": 87, "Chin": 95},
-    "Umar Nurmagomedov": {"Cat": "BW", "Taille": "173 cm", "Allonge": "175 cm", "Coups": 4.80, "TD": 4.5, "DefLutte": 80, "Preci": 68, "Pow": 75, "Chin": 90}
+    "Sean O'Malley": {"Cat": "BW", "Tier": 2, "Style": "Sniper", "Taille": "180 cm", "Allonge": "183 cm", "Str": 98, "Grap": 65, "Chin": 88, "Cardio": 90, "IQ": 92},
+    "Merab Dvalishvili": {"Cat": "BW", "Tier": 1, "Style": "Machine", "Taille": "168 cm", "Allonge": "173 cm", "Str": 75, "Grap": 99, "Chin": 95, "Cardio": 100, "IQ": 90},
+    "Petr Yan": {"Cat": "BW", "Tier": 2, "Style": "Complete", "Taille": "170 cm", "Allonge": "170 cm", "Str": 94, "Grap": 85, "Chin": 95, "Cardio": 95, "IQ": 92},
+    "Umar Nurmagomedov": {"Cat": "BW", "Tier": 2, "Style": "Dagestani", "Taille": "173 cm", "Allonge": "175 cm", "Str": 88, "Grap": 95, "Chin": 90, "Cardio": 92, "IQ": 92},
+    "Cory Sandhagen": {"Cat": "BW", "Tier": 3, "Style": "Creative", "Taille": "180 cm", "Allonge": "178 cm", "Str": 92, "Grap": 75, "Chin": 88, "Cardio": 92, "IQ": 90}
 }
 
 WEIGHT_CLASSES = {"HW": 265, "LHW": 205, "MW": 185, "WW": 170, "LW": 155, "FW": 145, "BW": 135}
 
-# --- 4. MOTEUR REALISTE (V23) ---
-def get_roster(cat):
-    if cat == "ALL": return sorted(list(DB.keys()))
-    allowed = ["HW", "LHW"] if cat == "HW" else [cat] # Simplification filtres
-    # Logique poids proches pour filtrage auto
-    idx = list(WEIGHT_CLASSES.keys()).index(cat) if cat in WEIGHT_CLASSES else 0
-    return sorted([k for k, v in DB.items()]) # On renvoie tout pour la version Fantasy, sinon filtrer
+# --- 4. HELPERS ---
+def get_filtered_roster(category_code):
+    if category_code == "ALL": return sorted(list(DB.keys()))
+    try:
+        idx = list(WEIGHT_CLASSES.keys()).index(category_code)
+        keys = list(WEIGHT_CLASSES.keys())
+        allowed = [keys[i] for i in range(max(0, idx-1), min(len(keys), idx+2))]
+    except: allowed = [category_code]
+    return sorted([name for name, data in DB.items() if data['Cat'] in allowed])
 
-def fight_logic(f1, f2):
+def get_data(name):
+    if name in DB: d = DB[name].copy(); d['Nom'] = name; return d
+    return None
+
+# --- 5. ALGORITHME GRANDMASTER (LE COEUR DU PROJET) ---
+def grandmaster_algo(f1, f2):
     score = 0
     reasons = []
     
-    # 1. ATTRIBUTS CACHÉS (LE "TOUCH OF DEATH")
-    # Pereira (99 Pow) vs Volkov (82 Chin) -> Diff 17 -> KO Danger
-    ko_threat_1 = f1['Pow'] - f2['Chin']
-    ko_threat_2 = f2['Pow'] - f1['Chin']
+    # A. TIER SYSTEM (P4P Difference)
+    # Tier 1 vs Tier 2 = Avantage net
+    # Tier 1 vs Tier 3 = Massacre
+    tier_diff = f2['Tier'] - f1['Tier'] # Si f1 est 1 et f2 est 2, diff = 1 (F1 advantage)
     
-    if ko_threat_1 > 10: 
-        score += 25 # Gros bonus pour le tueur
-        reasons.append(f"{txt['reasons']['ko_power']} ({f1['Nom']})")
-    elif ko_threat_1 > 0:
-        score += 10
-        
-    if ko_threat_2 > 10:
-        score -= 25
-        reasons.append(f"{txt['reasons']['ko_power']} ({f2['Nom']})")
-    elif ko_threat_2 > 0:
-        score -= 10
+    if tier_diff > 0: 
+        score += tier_diff * 15 
+        reasons.append(f"{txt['reasons']['tier_gap']} ({f1['Nom']})")
+    elif tier_diff < 0: 
+        score += tier_diff * 15 
+        reasons.append(f"{txt['reasons']['tier_gap']} ({f2['Nom']})")
 
-    # 2. FACTEUR POIDS (REALISME)
+    # B. STYLE CHECK (Dagestani Handcuff)
+    # Si Islam (Sambo) vs Striker sans défense d'élite -> Islam win auto
+    if f1['Style'] in ["Sambo", "Dagestani"] and f2['Grap'] < 90:
+        score += 20
+        reasons.append(f"{txt['reasons']['style_sambo']} ({f1['Nom']})")
+    elif f2['Style'] in ["Sambo", "Dagestani"] and f1['Grap'] < 90:
+        score -= 20
+        reasons.append(f"{txt['reasons']['style_sambo']} ({f2['Nom']})")
+
+    # C. STRIKING & PUISSANCE
+    # Sean O'Malley (Sniper) vs Wrestler lent
+    str_diff = f1['Str'] - f2['Str']
+    if str_diff > 10 and f1['Style'] == "Sniper":
+        score += 10
+        reasons.append(f"{txt['reasons']['style_sniper']} ({f1['Nom']})")
+    elif str_diff < -10 and f2['Style'] == "Sniper":
+        score -= 10
+        reasons.append(f"{txt['reasons']['style_sniper']} ({f2['Nom']})")
+
+    # D. POIDS (Si catégories différentes)
     w1 = WEIGHT_CLASSES.get(f1['Cat'], 155)
     w2 = WEIGHT_CLASSES.get(f2['Cat'], 155)
     diff_w = w1 - w2
-    
-    # Si le plus léger a une puissance monstrueuse (Pereira), on ignore la pénalité de poids
-    ignore_weight = (f1['Pow'] > 95 and diff_w < 0 and diff_w > -65)
-    
-    if not ignore_weight:
-        if diff_w > 15: score += 15; reasons.append(f"{txt['reasons']['diff_w']} (+{diff_w} lbs)")
-        elif diff_w < -15: score -= 15; reasons.append(f"{txt['reasons']['diff_w']} (+{abs(diff_w)} lbs)")
+    if abs(diff_w) > 15:
+        w_bonus = diff_w * 0.5
+        score += w_bonus
+        if diff_w > 0: reasons.append(f"{txt['reasons']['phys_gap']} (+{diff_w} lbs)")
+        else: reasons.append(f"{txt['reasons']['phys_gap']} (+{abs(diff_w)} lbs)")
 
-    # 3. LUTTE (STYLES MAKE FIGHTS)
-    grap_1 = f1['TD'] * ((100 - f2['DefLutte']) / 100.0)
-    grap_2 = f2['TD'] * ((100 - f1['DefLutte']) / 100.0)
-    
-    if grap_1 > 2.5: score += 15; reasons.append(f"{txt['reasons']['grap']} ({f1['Nom']})")
-    if grap_2 > 2.5: score -= 15; reasons.append(f"{txt['reasons']['grap']} ({f2['Nom']})")
+    # E. CARDIO (5 Rounds)
+    if f1['Cardio'] > f2['Cardio'] + 10:
+        score += 5
+        reasons.append(f"{txt['reasons']['cardio_gap']} ({f1['Nom']})")
+    elif f2['Cardio'] > f1['Cardio'] + 10:
+        score -= 5
+        reasons.append(f"{txt['reasons']['cardio_gap']} ({f2['Nom']})")
 
-    # 4. VOLUME (Seulement si pas de danger KO immédiat)
-    if abs(score) < 20: # Si combat serré, le volume compte
-        vol_diff = (f1['Coups'] * f1['Preci']) - (f2['Coups'] * f2['Preci'])
-        score += vol_diff * 0.5
-        if vol_diff > 150: reasons.append(f"{txt['reasons']['volume']} ({f1['Nom']})")
-
-    # RESULTAT
+    # FINALISATION
     final_score = 50 + score
     final_score = max(5, min(95, final_score))
     
-    # CALCUL FINISH
-    # Si écart puissance/menton > 10 -> KO très probable
-    if ko_threat_1 > 10 or ko_threat_2 > 10: 
-        ko_prob = 85
-        sub_prob = 5
-    elif grap_1 > 3 or grap_2 > 3:
-        ko_prob = 15
-        sub_prob = 60
+    # Finish Logic
+    grap_factor = max(f1['Grap'], f2['Grap'])
+    pow_factor = max(f1['Str'], f2['Str'])
+    
+    # Si écart poids énorme -> KO
+    if abs(diff_w) > 25:
+        ko = 95; sub = 2; dec = 3
+    # Si Dagestani dominant -> SUB/DEC
+    elif "Dagestani" in [f1['Style'], f2['Style']] or "Sambo" in [f1['Style'], f2['Style']]:
+        ko = 15; sub = 55; dec = 30
+    # Si Sniper vs Chin faible -> KO
+    elif (f1['Str'] > 95 and f2['Chin'] < 85) or (f2['Str'] > 95 and f1['Chin'] < 85):
+        ko = 80; sub = 5; dec = 15
     else:
-        ko_prob = 25; sub_prob = 10
+        # Standard
+        ko = 30; sub = 20; dec = 50
         
-    dec_prob = 100 - ko_prob - sub_prob
-    return int(final_score), ko_prob, sub_prob, dec_prob, reasons[:3]
+    return int(final_score), ko, sub, dec, reasons[:3]
 
-# --- 5. CSS ---
+# --- 6. CSS (LOGO CENTRÉ ABSOLU) ---
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;800;900&display=swap');
     .stApp { background-color: #0f172a; background-image: radial-gradient(at 50% 0%, rgba(46, 204, 113, 0.1) 0px, transparent 60%); font-family: 'Montserrat', sans-serif; }
     h1,h2,div,p{font-family:'Montserrat',sans-serif!important;}
     
+    /* LOGO CENTERING HACK */
+    .logo-container {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        margin-bottom: 20px;
+    }
+    .logo-container img {
+        max-width: 300px;
+        height: auto;
+    }
+
     .stSelectbox > div > div { background: transparent !important; border: none !important; }
     .stSelectbox div[data-baseweb="select"] > div { background-color: #1e293b !important; border: 1px solid rgba(255,255,255,0.1) !important; color: white !important; border-radius: 12px; }
     .glass-card { background: rgba(30, 41, 59, 0.6); backdrop-filter: blur(12px); border-radius: 20px; padding: 24px; border: 1px solid rgba(255,255,255,0.08); box-shadow: 0 10px 30px -5px rgba(0,0,0,0.4); margin-bottom: 20px; }
@@ -195,30 +227,46 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# --- 6. UI ---
-c_emp, c_logo, c_lang = st.columns([1, 6, 1])
-with c_logo:
-    if os.path.exists("logo.png"):
-        st.image("logo.png", width=300)
-    else:
-        st.markdown("<h1 style='text-align:center; color:white;'>CAGEMETRICS <span style='color:#2ecc71'>ELITE</span></h1>", unsafe_allow_html=True)
-    st.markdown(f"<div style='text-align:center; color:#94a3b8; font-size:0.9rem; margin-top:-10px;'>{txt['sub']}</div>", unsafe_allow_html=True)
+# --- 7. UI ---
 
-with c_lang:
-    if st.button("🇫🇷" if st.session_state.lang == 'en' else "🇺🇸"): toggle(); st.rerun()
+# HEADER AVEC LOGO PARFAITEMENT CENTRÉ
+if os.path.exists("logo.png"):
+    st.markdown(
+        f"""
+        <div class="logo-container">
+            <img src="data:image/png;base64,{st.image("logo.png", output_format="PNG")}" style="display:none;">
+        </div>
+        """, unsafe_allow_html=True
+    )
+    st.image("logo.png", use_column_width=False, width=300) # Simple centering fallback
+else:
+    st.markdown("<h1 style='text-align:center; color:white;'>CAGEMETRICS <span style='color:#2ecc71'>ELITE</span></h1>", unsafe_allow_html=True)
+
+c_1, c_2, c_3 = st.columns([1, 10, 1])
+with c_2:
+    st.markdown(f"<div style='text-align:center; color:#94a3b8; font-size:0.9rem; margin-top:-10px;'>{txt['sub']}</div>", unsafe_allow_html=True)
+with c_3:
+    if st.button("🇫🇷" if st.session_state.lang == 'en' else "🇺🇸", key="lang"): toggle(); st.rerun()
 
 st.markdown("<br>", unsafe_allow_html=True)
 
 # SELECTION
-roster_list = sorted(list(DB.keys()))
+cats_map = {"Heavyweight (HW)": "HW", "Light Heavyweight (LHW)": "LHW", "Middleweight (MW)": "MW", "Welterweight (WW)": "WW", "Lightweight (LW)": "LW", "Featherweight (FW)": "FW", "Bantamweight (BW)": "BW", "Show All / Fantasy": "ALL"}
+cat_name = st.selectbox("", list(cats_map.keys()), label_visibility="collapsed")
+cat_code = cats_map[cat_name]
+
+filtered_roster = get_filtered_roster(cat_code)
+
 c1,c2,c3=st.columns([1,0.1,1])
-idx_a = roster_list.index("Alex Pereira") if "Alex Pereira" in roster_list else 0
-f_a = c1.selectbox("A", roster_list, index=idx_a, label_visibility="collapsed", key="fa")
+idx_a = 0
+idx_b = 1 if len(filtered_roster) > 1 else 0
+f_a = c1.selectbox("A", filtered_roster, index=idx_a, label_visibility="collapsed", key="fa")
 c2.markdown("<div style='text-align:center; padding-top:10px; font-weight:900; color:white;'>VS</div>",unsafe_allow_html=True)
-f_b = c3.selectbox("B", roster_list, index=0, label_visibility="collapsed", key="fb") # Volkov
+f_b = c3.selectbox("B", filtered_roster, index=idx_b, label_visibility="collapsed", key="fb")
 
 st.markdown("<br>", unsafe_allow_html=True)
 
+# BOUTON
 col_x, col_y, col_z = st.columns([1, 4, 1])
 with col_y:
     analyze = st.button(txt['btn'], use_container_width=True)
@@ -227,31 +275,32 @@ if analyze:
     if f_a==f_b: st.warning(txt['err'])
     else:
         with st.spinner("Simulation..."):
-            d1 = DB[f_a]; d1['Nom'] = f_a
-            d2 = DB[f_b]; d2['Nom'] = f_b
+            d1 = get_data(f_a); d2 = get_data(f_b)
             
-            sc,k,sb,d, reasons = fight_logic(d1, d2)
+            sc,k,sb,d, reasons = grandmaster_algo(d1, d2)
             w = d1['Nom'] if sc>=50 else d2['Nom']
             cf = sc if sc>=50 else 100-sc
             
+            # WINNER
             st.markdown(f"""<div class="glass-card" style="text-align:center; border:2px solid #2ecc71; background:rgba(46, 204, 113, 0.05);"><div style="color:#94a3b8; font-size:0.7rem; font-weight:700; letter-spacing:1px; margin-bottom:5px;">{txt['win']}</div><div style="font-size:2.5rem; font-weight:900; color:white; line-height:1; margin-bottom:10px; text-transform:uppercase;">{w}</div><span style="background:#2ecc71; color:#020617; padding:4px 12px; border-radius:20px; font-weight:800; font-size:0.8rem;">{cf}% {txt['conf']}</span></div>""",unsafe_allow_html=True)
             
             if reasons:
                 html_reasons = "".join([f"<span class='reason-tag'>{r}</span>" for r in reasons])
                 st.markdown(f"""<div class="glass-card"><div style="text-align:center; font-weight:800; color:white; margin-bottom:10px;">{txt['keys']}</div><div style="text-align:center;">{html_reasons}</div></div>""", unsafe_allow_html=True)
 
+            # SCENARIO
             st.markdown(f"""<div class="glass-card"><div style="text-align:center; font-weight:800; color:white;">{txt['meth']}</div><div class="finish-cont"><div style="width:{k}%; background:#ef4444;"></div><div style="width:{sb}%; background:#eab308;"></div><div style="width:{d}%; background:#3b82f6;"></div></div><div style="display:flex; justify-content:space-between; margin-top:8px; font-size:0.7rem; font-weight:700;"><span style="color:#ef4444">KO/TKO {k}%</span><span style="color:#eab308">SUB {sb}%</span><span style="color:#3b82f6">DEC {d}%</span></div></div>""",unsafe_allow_html=True)
             
+            # STATS
             st.markdown(f'<div class="glass-card"><div style="text-align:center; color:#94a3b8; font-weight:700; margin-bottom:15px;">{txt["tech"]}</div>',unsafe_allow_html=True)
             def stat_vis(l,v1,v2, max_v):
                 st.markdown(f"""<div style="margin-bottom:12px;"><div style="display:flex; justify-content:space-between; font-weight:700; font-size:0.9rem;"><span style="color:#38bdf8">{v1}</span><span style="color:#f43f5e">{v2}</span></div><div class="bar-bg"><div class="bar-l" style="width:{(v1/max_v)*100}%"></div><div class="bar-r" style="width:{(v2/max_v)*100}%"></div></div><div style="text-align:center; font-size:0.7rem; color:#94a3b8; font-weight:700; text-transform:uppercase; margin-top:2px;">{l}</div></div>""",unsafe_allow_html=True)
             
             l=txt['lbl']
-            stat_vis(l[0],d1['Pow'],d2['Pow'], 100)
-            stat_vis(l[1],d1['Chin'],d2['Chin'], 100)
-            stat_vis(l[2],d1['TD'],d2['TD'], 8)
-            stat_vis(l[3],d1['DefLutte'],d2['DefLutte'], 100)
-            stat_vis(l[4],d1['Coups'],d2['Coups'], 10)
+            stat_vis(l[0],d1['Str'],d2['Str'], 100) # Puissance
+            stat_vis(l[1],d1['Chin'],d2['Chin'], 100) # Menton
+            stat_vis(l[2],d1['Grap'],d2['Grap'], 100) # Grap
+            stat_vis(l[4],d1['Cardio'],d2['Cardio'], 100) # Cardio
             st.markdown('</div>',unsafe_allow_html=True)
             
             st.markdown(f"""<a href="https://www.unibet.fr/sport/mma" target="_blank" style="text-decoration:none;"><button style="width:100%; background:#fc4c02; color:white; border:none; padding:16px; border-radius:12px; font-weight:800; cursor:pointer;">{txt['cta']} {w}</button></a>""",unsafe_allow_html=True)
