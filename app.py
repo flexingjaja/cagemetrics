@@ -1,48 +1,56 @@
 import streamlit as st
 import requests
-from bs4 import BeautifulSoup
 import os
 
 # --- 1. CONFIGURATION ---
 st.set_page_config(page_title="CageMetrics Pro", page_icon="⚡", layout="centered")
 
-# --- 2. SESSION & LANGUE ---
+# --- 2. GESTION LANGUE ---
 if 'lang' not in st.session_state: st.session_state.lang = 'fr'
 def toggle(): st.session_state.lang = 'en' if st.session_state.lang == 'fr' else 'fr'
 
 T = {
     "fr": { 
-        "sub": "Moteur Prédictif MMA & Analyse Physique", 
-        "btn": "LANCER L'ANALYSE", "win": "VAINQUEUR PRÉDIT", "conf": "INDICE DE CONFIANCE", 
+        "sub": "Algorithme de Prédiction MMA Haute Précision", 
+        "btn": "LANCER L'ANALYSE TACTIQUE", "win": "VAINQUEUR PRÉDIT", "conf": "INDICE DE CONFIANCE", 
         "meth": "SCÉNARIO DU COMBAT", 
         "tech": "COMPARATIF TECHNIQUE", "lbl": ["Taille", "Allonge", "Frappes/min", "Précision", "Takedowns/15m", "Déf. Lutte"], 
-        "cta": "VOIR LES COTES", "err": "Veuillez sélectionner deux combattants différents.",
-        "keys": "FACTEURS CLÉS", "adv": "Avantage", "more_acc": "Plus Précis", "grap_adv": "Menace Lutte", 
-        "phys_adv": "Avantage Allonge", "weight_adv": "AVANTAGE POIDS/PUISSANCE"
+        "cta": "VOIR LA COTE", "err": "Erreur : Veuillez sélectionner deux combattants différents.",
+        "keys": "FACTEURS DÉCISIFS", 
+        "reasons": {
+            "weight": "Avantage Physique Massif (Poids/Puissance)",
+            "grap_mismatch": "Incompatibilité Stylistique (Lutte vs Pas de Défense)",
+            "sniper": "Striking Chirurgical (Précision Supérieure)",
+            "cardio": "Volume de Frappe Supérieur (Pression)",
+            "reach": "Gestion de la Distance (Allonge)",
+            "wrestler": "Domination au Sol (Lutte)"
+        }
     },
     "en": { 
-        "sub": "MMA Predictive Engine & Physical Analysis", 
-        "btn": "RUN ANALYSIS", "win": "PREDICTED WINNER", "conf": "CONFIDENCE SCORE", 
+        "sub": "High Precision MMA Predictive Algorithm", 
+        "btn": "RUN TACTICAL ANALYSIS", "win": "PREDICTED WINNER", "conf": "CONFIDENCE SCORE", 
         "meth": "FIGHT SCENARIO", 
         "tech": "TECHNICAL BREAKDOWN", "lbl": ["Height", "Reach", "Strikes/min", "Accuracy", "Takedowns/15m", "Takedown Def"], 
-        "cta": "SEE ODDS", "err": "Please select two different fighters.",
-        "keys": "KEY FACTORS", "adv": "Advantage", "more_acc": "More Accurate", "grap_adv": "Grappling Threat", 
-        "phys_adv": "Reach Advantage", "weight_adv": "WEIGHT/POWER ADVANTAGE"
+        "cta": "SEE ODDS", "err": "Error: Please select two different fighters.",
+        "keys": "DECISIVE FACTORS",
+        "reasons": {
+            "weight": "Massive Physical Advantage (Weight/Power)",
+            "grap_mismatch": "Stylistic Mismatch (Wrestling vs No Defense)",
+            "sniper": "Surgical Striking (Higher Accuracy)",
+            "cardio": "High Volume Pressure",
+            "reach": "Range Management (Reach)",
+            "wrestler": "Ground Control Dominance"
+        }
     }
 }
 txt = T[st.session_state.lang]
 
-# --- 3. SYSTEME DE POIDS (REALISME) ---
-# Poids de combat approximatif en livres (lbs) pour calculs physiques
-WEIGHT_CLASSES = {
-    "HW": 265, "LHW": 205, "MW": 185, "WW": 170, 
-    "LW": 155, "FW": 145, "BW": 135, "FLW": 125,
-    "WSW": 115, "WFW": 125, "WBW": 135
-}
+# --- 3. DATA BASE (STARS & TOP 15) ---
+# Poids approximatifs pour la physique (lbs)
+W_CLASS = { "HW": 260, "LHW": 205, "MW": 185, "WW": 170, "LW": 155, "FW": 145, "BW": 135 }
 
-# --- 4. DATA BASE (ROSTER) ---
 DB = {
-    # HEAVYWEIGHT
+    # HW
     "Jon Jones": {"Cat": "HW", "Taille": "6' 4\"", "Allonge": "84\"", "Coups": 4.30, "TD": 1.85, "DefLutte": 95, "Preci": 58},
     "Tom Aspinall": {"Cat": "HW", "Taille": "6' 5\"", "Allonge": "78\"", "Coups": 7.72, "TD": 3.50, "DefLutte": 100, "Preci": 66},
     "Ciryl Gane": {"Cat": "HW", "Taille": "6' 4\"", "Allonge": "81\"", "Coups": 5.11, "TD": 0.60, "DefLutte": 45, "Preci": 59},
@@ -69,6 +77,7 @@ DB = {
     "Leon Edwards": {"Cat": "WW", "Taille": "6' 0\"", "Allonge": "74\"", "Coups": 2.80, "TD": 1.25, "DefLutte": 70, "Preci": 53},
     "Kamaru Usman": {"Cat": "WW", "Taille": "6' 0\"", "Allonge": "76\"", "Coups": 4.46, "TD": 2.82, "DefLutte": 97, "Preci": 52},
     "Shavkat Rakhmonov": {"Cat": "WW", "Taille": "6' 1\"", "Allonge": "77\"", "Coups": 4.45, "TD": 1.49, "DefLutte": 100, "Preci": 59},
+    "Jack Della Maddalena": {"Cat": "WW", "Taille": "5' 11\"", "Allonge": "73\"", "Coups": 7.20, "TD": 0.30, "DefLutte": 67, "Preci": 53},
     "Ian Machado Garry": {"Cat": "WW", "Taille": "6' 3\"", "Allonge": "74\"", "Coups": 6.67, "TD": 0.00, "DefLutte": 69, "Preci": 56},
     "Colby Covington": {"Cat": "WW", "Taille": "5' 11\"", "Allonge": "72\"", "Coups": 4.00, "TD": 4.05, "DefLutte": 79, "Preci": 39},
     # LW
@@ -80,6 +89,7 @@ DB = {
     "Michael Chandler": {"Cat": "LW", "Taille": "5' 8\"", "Allonge": "71\"", "Coups": 5.10, "TD": 1.70, "DefLutte": 71, "Preci": 45},
     "Benoit Saint Denis": {"Cat": "LW", "Taille": "5' 11\"", "Allonge": "73\"", "Coups": 5.70, "TD": 4.55, "DefLutte": 68, "Preci": 54},
     "Conor McGregor": {"Cat": "LW", "Taille": "5' 9\"", "Allonge": "74\"", "Coups": 5.32, "TD": 0.67, "DefLutte": 66, "Preci": 49},
+    "Paddy Pimblett": {"Cat": "LW", "Taille": "5' 10\"", "Allonge": "73\"", "Coups": 4.20, "TD": 1.80, "DefLutte": 56, "Preci": 46},
     # FW
     "Ilia Topuria": {"Cat": "FW", "Taille": "5' 7\"", "Allonge": "69\"", "Coups": 4.40, "TD": 1.92, "DefLutte": 92, "Preci": 46},
     "Max Holloway": {"Cat": "FW", "Taille": "5' 11\"", "Allonge": "69\"", "Coups": 7.17, "TD": 0.30, "DefLutte": 84, "Preci": 48},
@@ -96,6 +106,7 @@ DB = {
 
 WEIGHT_MAP = ["BW", "FW", "LW", "WW", "MW", "LHW", "HW"]
 
+# --- 4. HELPERS ---
 def get_filtered_roster(category_code):
     if category_code == "ALL": return sorted(list(DB.keys()))
     try:
@@ -104,7 +115,6 @@ def get_filtered_roster(category_code):
     except: allowed = [category_code]
     return sorted([name for name, data in DB.items() if data['Cat'] in allowed])
 
-# --- 5. HELPERS ---
 def clean_num(val):
     if isinstance(val, (int, float)): return val
     try: return float(str(val).replace('%','').replace(' cm','').strip())
@@ -131,98 +141,117 @@ def process_units(d, lang):
         except: pass
     return new_d
 
-# --- 6. ALGORITHME PHYSIQUE (LE CERVEAU) ---
-def smart_algo(f1, f2):
+# --- 5. ALGORITHME PRÉCIS (STYLES & POIDS) ---
+def precise_algo(f1, f2):
     score = 0
     reasons = []
     
-    # 1. FACTEUR POIDS (LE REALISME)
-    w1 = WEIGHT_CLASSES.get(f1['Cat'], 155)
-    w2 = WEIGHT_CLASSES.get(f2['Cat'], 155)
-    diff_weight = w1 - w2
+    # A. FACTEUR POIDS (La physique ne ment pas)
+    w1 = W_CLASS.get(f1['Cat'], 155)
+    w2 = W_CLASS.get(f2['Cat'], 155)
+    diff_w = w1 - w2
     
-    # Si écart significatif (>10 livres), pénalité massive
-    # Exemple: Jones (265) vs O'Malley (135) = +130 lbs. 
-    # Score += 130 * 0.4 = +52 points. O'Malley n'a aucune chance stats.
-    if diff_weight != 0:
-        score += diff_weight * 0.4 
-        if diff_weight > 15: reasons.append(f"⚖️ {txt['weight_adv']} ({f1['Nom']})")
-        elif diff_weight < -15: reasons.append(f"⚖️ {txt['weight_adv']} ({f2['Nom']})")
+    if diff_w > 15: 
+        score += 25 # Gros bonus pour le lourd
+        reasons.append(f"⚖️ {txt['reasons']['weight']} ({f1['Nom']})")
+    elif diff_w < -15: 
+        score -= 25
+        reasons.append(f"⚖️ {txt['reasons']['weight']} ({f2['Nom']})")
 
-    # 2. STRIKING EFFICACE (Précision compte plus que volume)
+    # B. LUTTE VS DÉFENSE (Le facteur "Khabib")
+    # Score de menace Lutte (Takedowns * (100 - DefenseAdverse))
+    grapple_threat_1 = f1['TD'] * ((100 - f2['DefLutte']) / 100.0)
+    grapple_threat_2 = f2['TD'] * ((100 - f1['DefLutte']) / 100.0)
+    
+    # Si mismatch énorme (Gros lutteur vs Passoire)
+    if grapple_threat_1 > 2.0 and grapple_threat_2 < 1.0:
+        score += 15
+        reasons.append(f"🤼 {txt['reasons']['grap_mismatch']} ({f1['Nom']})")
+    elif grapple_threat_2 > 2.0 and grapple_threat_1 < 1.0:
+        score -= 15
+        reasons.append(f"🤼 {txt['reasons']['grap_mismatch']} ({f2['Nom']})")
+    else:
+        # Avantage léger lutte
+        score += (grapple_threat_1 - grapple_threat_2) * 3
+
+    # C. STRIKING (Volume & Précision)
     eff_1 = f1['Coups'] * (f1['Preci'] / 100.0)
     eff_2 = f2['Coups'] * (f2['Preci'] / 100.0)
-    diff_eff = eff_1 - eff_2
+    diff_strike = eff_1 - eff_2
     
-    # Le striking compte moins si l'écart de poids est énorme
-    weight_dampener = 1.0 if abs(diff_weight) < 20 else 0.5 
-    score += (diff_eff * 8) * weight_dampener
+    # Le striking pèse moins si l'écart de poids est grand (le petit touche mais ne fait pas mal)
+    strike_weight = 0.5 if abs(diff_w) > 20 else 1.0
+    score += (diff_strike * 6) * strike_weight
     
-    if diff_eff > 1.0 and abs(diff_weight) < 20: reasons.append(f"🥊 {txt['more_acc']} ({f1['Nom']})")
-    elif diff_eff < -1.0 and abs(diff_weight) < 20: reasons.append(f"🥊 {txt['more_acc']} ({f2['Nom']})")
-    
-    # 3. LUTTE (Menace)
-    threat_1 = f1['TD'] * ((100 - f2['DefLutte']) / 100.0)
-    threat_2 = f2['TD'] * ((100 - f1['DefLutte']) / 100.0)
-    
-    # Un lourd qui lutte contre un léger = Game Over
-    if diff_weight > 20: threat_1 *= 1.5 
-    if diff_weight < -20: threat_2 *= 1.5
-    
-    diff_grap = threat_1 - threat_2
-    score += diff_grap * 6
-    
-    if threat_1 > 1.5 and abs(diff_weight) < 30: reasons.append(f"🤼 {txt['grap_adv']} ({f1['Nom']})")
-    
+    if diff_strike > 1.5 and abs(diff_w) < 20: reasons.append(f"🎯 {txt['reasons']['sniper']} ({f1['Nom']})")
+    elif diff_strike < -1.5 and abs(diff_w) < 20: reasons.append(f"🎯 {txt['reasons']['sniper']} ({f2['Nom']})")
+
+    # D. ALLONGE (Seulement si striker vs striker)
+    if abs(grapple_threat_1 - grapple_threat_2) < 1.0: # Pas de danger lutte imminent
+        try:
+            r1 = float(f1['Allonge'].replace('"',''))
+            r2 = float(f2['Allonge'].replace('"',''))
+            if r1 > r2 + 3: score += 5; reasons.append(f"📏 {txt['reasons']['reach']} ({f1['Nom']})")
+            elif r2 > r1 + 3: score -= 5; reasons.append(f"📏 {txt['reasons']['reach']} ({f2['Nom']})")
+        except: pass
+
     # CALCUL FINAL
     final_score = 50 + score
-    final_score = max(5, min(95, final_score)) # Jamais 0% ou 100%
+    final_score = max(5, min(95, final_score))
     
-    # LOGIQUE DE FINISH (KO vs DEC)
-    # Si écart de poids énorme -> KO quasi sûr
-    violence = (eff_1 + eff_2) + (threat_1 + threat_2)
-    if abs(diff_weight) > 30: 
-        finish_prob = 95 # David vs Goliath = KO
+    # SCENARIO KO/SUB/DEC
+    violence = (eff_1 + eff_2) + (grapple_threat_1 + grapple_threat_2)
+    
+    # Si écart de poids > 2 classes -> KO quasi certain
+    if abs(diff_w) > 25: 
+        finish_prob = 98
     else:
-        finish_prob = min(90, 20 + violence * 5)
-        
-    strike_ratio = (eff_1 + eff_2) / max(0.1, violence)
-    if abs(diff_weight) > 20: strike_ratio = 0.9 # Le lourd gagne par KO souvent
+        finish_prob = min(92, 20 + violence * 6)
+    
+    # Répartition
+    grapple_ratio = (grapple_threat_1 + grapple_threat_2) / max(0.1, violence)
+    strike_ratio = 1 - grapple_ratio
+    
+    # Si mismatch poids -> KO favorisé
+    if abs(diff_w) > 20: strike_ratio = 0.9
     
     ko = int(finish_prob * strike_ratio)
-    sub = int(finish_prob * (1 - strike_ratio))
+    sub = int(finish_prob * grapple_ratio)
     dec = 100 - ko - sub
     
-    return int(final_score), ko, sub, dec, reasons
+    return int(final_score), ko, sub, dec, reasons[:3] # Max 3 raisons
 
-# --- 7. CSS (CENTRÉ & CLEAN) ---
+# --- 6. CSS (RUNNATIC) ---
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;800;900&display=swap');
     .stApp { background-color: #0f172a; background-image: radial-gradient(at 50% 0%, rgba(46, 204, 113, 0.1) 0px, transparent 60%); font-family: 'Montserrat', sans-serif; }
     h1,h2,div,p{font-family:'Montserrat',sans-serif!important;}
     
-    .header-container { display: flex; flex-direction: column; align-items: center; justify-content: center; margin-bottom: 20px; }
-    .logo-img { max-height: 80px; margin-bottom: 10px; }
-    
+    /* INPUTS CLEAN */
     .stSelectbox > div > div { background-color: transparent !important; border: none !important; }
     .stSelectbox div[data-baseweb="select"] > div { background-color: #1e293b !important; border: 1px solid rgba(255,255,255,0.1) !important; color: white !important; border-radius: 12px; }
 
+    /* CARDS */
     .glass-card { background: rgba(30, 41, 59, 0.6); backdrop-filter: blur(12px); border-radius: 20px; padding: 24px; border: 1px solid rgba(255,255,255,0.08); box-shadow: 0 10px 30px -5px rgba(0,0,0,0.4); margin-bottom: 20px; }
+    
+    /* BUTTON */
     div.stButton>button { background: #2ecc71!important; color: #020617!important; border-radius: 12px; padding: 18px; font-weight: 900; text-transform: uppercase; border: none; width: 100%; transition: 0.3s; }
     div.stButton>button:hover { transform: scale(1.02); }
+    
+    /* BARS & TAGS */
     .bar-bg { width: 100%; height: 8px; background: rgba(255,255,255,0.1); border-radius: 4px; overflow: hidden; display: flex; margin-top: 5px; }
     .bar-l { height: 100%; background: #38bdf8; } .bar-r { height: 100%; background: #f43f5e; }
     .finish-cont { width: 100%; height: 14px; background: #1e293b; border-radius: 7px; overflow: hidden; display: flex; margin-top: 10px; }
-    .reason-tag { background: rgba(255,255,255,0.1); padding: 5px 10px; border-radius: 8px; font-size: 0.75rem; color: #cbd5e1; display: inline-block; margin: 2px; border: 1px solid rgba(255,255,255,0.1); }
+    .reason-tag { background: rgba(255,255,255,0.1); padding: 6px 12px; border-radius: 8px; font-size: 0.75rem; color: #cbd5e1; display: block; margin: 4px auto; border: 1px solid rgba(255,255,255,0.1); width: fit-content; }
 </style>
 """, unsafe_allow_html=True)
 
-# --- 8. UI ---
-c_empty, c_mid, c_lang = st.columns([1, 6, 1])
-with c_mid:
+# --- 7. UI ---
+c_emp, c_logo, c_lang = st.columns([1, 6, 1])
+with c_logo:
+    # LOGO UNIQUE ET CENTRÉ
     if os.path.exists("logo.png"):
-        st.markdown(f"""<div class="header-container"><img src="data:image/png;base64,{st.image("logo.png", output_format="PNG")}" class="logo-img" style="display:none;"></div>""", unsafe_allow_html=True)
         st.image("logo.png", width=300)
     else:
         st.markdown("<h1 style='text-align:center; color:white;'>CAGEMETRICS <span style='color:#2ecc71'>PRO</span></h1>", unsafe_allow_html=True)
@@ -233,7 +262,8 @@ with c_lang:
 
 st.markdown("<br>", unsafe_allow_html=True)
 
-cats_map = {"Heavyweight (HW)": "HW", "Light Heavyweight (LHW)": "LHW", "Middleweight (MW)": "MW", "Welterweight (WW)": "WW", "Lightweight (LW)": "LW", "Featherweight (FW)": "FW", "Bantamweight (BW)": "BW", "Show All": "ALL"}
+# INPUTS
+cats_map = {"Heavyweight (HW)": "HW", "Light Heavyweight (LHW)": "LHW", "Middleweight (MW)": "MW", "Welterweight (WW)": "WW", "Lightweight (LW)": "LW", "Featherweight (FW)": "FW", "Bantamweight (BW)": "BW", "Show All / Fantasy": "ALL"}
 cat_name = st.selectbox("", list(cats_map.keys()), label_visibility="collapsed")
 cat_code = cats_map[cat_name]
 
@@ -262,18 +292,22 @@ if analyze:
             s2 = process_units(raw_s2, st.session_state.lang)
             
             if s1 and s2:
-                sc,k,sb,d, reasons = smart_algo(raw_s1, raw_s2)
+                sc,k,sb,d, reasons = precise_algo(raw_s1, raw_s2)
                 w = s1['Nom'] if sc>=50 else s2['Nom']
                 cf = sc if sc>=50 else 100-sc
                 
+                # WINNER
                 st.markdown(f"""<div class="glass-card" style="text-align:center; border:2px solid #2ecc71; background:rgba(46, 204, 113, 0.05);"><div style="color:#94a3b8; font-size:0.7rem; font-weight:700; letter-spacing:1px; margin-bottom:5px;">{txt['win']}</div><div style="font-size:2.5rem; font-weight:900; color:white; line-height:1; margin-bottom:10px; text-transform:uppercase;">{w}</div><span style="background:#2ecc71; color:#020617; padding:4px 12px; border-radius:20px; font-weight:800; font-size:0.8rem;">{cf}% {txt['conf']}</span></div>""",unsafe_allow_html=True)
                 
+                # REASONS
                 if reasons:
                     html_reasons = "".join([f"<span class='reason-tag'>{r}</span>" for r in reasons])
                     st.markdown(f"""<div class="glass-card"><div style="text-align:center; font-weight:800; color:white; margin-bottom:10px;">{txt['keys']}</div><div style="text-align:center;">{html_reasons}</div></div>""", unsafe_allow_html=True)
 
+                # FINISH
                 st.markdown(f"""<div class="glass-card"><div style="text-align:center; font-weight:800; color:white;">{txt['meth']}</div><div class="finish-cont"><div style="width:{k}%; background:#ef4444;"></div><div style="width:{sb}%; background:#eab308;"></div><div style="width:{d}%; background:#3b82f6;"></div></div><div style="display:flex; justify-content:space-between; margin-top:8px; font-size:0.7rem; font-weight:700;"><span style="color:#ef4444">KO/TKO {k}%</span><span style="color:#eab308">SUB {sb}%</span><span style="color:#3b82f6">DEC {d}%</span></div></div>""",unsafe_allow_html=True)
                 
+                # STATS
                 st.markdown(f'<div class="glass-card"><div style="text-align:center; color:#94a3b8; font-weight:700; margin-bottom:15px;">{txt["tech"]}</div>',unsafe_allow_html=True)
                 def stat_vis(l,v1,v2):
                     n1=clean_num(v1); n2=clean_num(v2); tot=max(n1+n2,0.1); p1=(n1/tot)*100; p2=(n2/tot)*100
