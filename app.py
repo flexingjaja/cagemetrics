@@ -166,11 +166,11 @@ st.markdown("""
 c_t, c_l = st.columns([5,1])
 with c_t: 
     # LOGO REMPLACE LE TITRE
-    # IMPORTANT: Assure-toi que logo.jpeg est dans le même dossier !
-    if os.path.exists("logo.jpeg"):
-        st.image("logo.jpeg", width=350)
+    # IMPORTANT: Assure-toi que logo.png est dans le même dossier !
+    if os.path.exists("logo.png"):
+        st.image("logo.png", width=350)
     else:
-        st.warning("⚠️ Image 'logo.jpeg' introuvable. Ajoutez-la dans le dossier.")
+        st.warning("⚠️ Image 'logo.png' introuvable. Ajoutez-la dans le dossier.")
         st.markdown(f"<h1 style='color:white; font-size:2rem;'>CAGEMETRICS <span style='color:#2ecc71'>PRO</span></h1>", unsafe_allow_html=True)
     st.caption(txt['sub'])
 
