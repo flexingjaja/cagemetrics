@@ -1,26 +1,24 @@
 import streamlit as st
 import requests
 from bs4 import BeautifulSoup
+import os
 
 # --- 1. CONFIGURATION ---
 st.set_page_config(page_title="CageMetrics Pro", page_icon="⚡", layout="centered")
 
 # --- 2. SESSION & LANGUE ---
 if 'lang' not in st.session_state: st.session_state.lang = 'fr'
-def set_fr(): st.session_state.lang = 'fr'
-def set_en(): st.session_state.lang = 'en'
 def toggle(): st.session_state.lang = 'en' if st.session_state.lang == 'fr' else 'fr'
 
-# Textes
 T = {
     "fr": { 
-        "sub": "L'outil d'analyse prédictive MMA de référence", "step1": "CHOIX DE LA CATÉGORIE", "step2": "SÉLECTION DU MATCHUP",
+        "sub": "L'outil d'analyse prédictive MMA de référence", 
         "btn": "LANCER L'ANALYSE", "win": "VAINQUEUR PRÉDIT", "conf": "CONFIANCE", "meth": "PROBABILITÉS DE FINISH", 
         "tech": "COMPARATIF TECHNIQUE", "lbl": ["Taille", "Allonge", "Frappes/min", "Précision", "Takedowns/15m", "Déf. Lutte"], 
         "cta": "PARIER SUR", "err": "Veuillez sélectionner deux combattants différents." 
     },
     "en": { 
-        "sub": "The Ultimate MMA Predictive Analytics Tool", "step1": "SELECT WEIGHT CLASS", "step2": "MATCHUP SELECTION",
+        "sub": "The Ultimate MMA Predictive Analytics Tool", 
         "btn": "ANALYZE FIGHT", "win": "PREDICTED WINNER", "conf": "CONFIDENCE", "meth": "FINISH PROBABILITY", 
         "tech": "TECHNICAL BREAKDOWN", "lbl": ["Height", "Reach", "Strikes/min", "Accuracy", "Takedowns/15m", "Takedown Def"], 
         "cta": "BET ON", "err": "Please select two different fighters." 
@@ -28,12 +26,8 @@ T = {
 }
 txt = T[st.session_state.lang]
 
-# --- 3. DATA ARCHITECTURE (ANTI-ERROR) ---
-# Structure : Nom -> {Catégorie, Stats...}
-# Les stats sont hardcodées ici pour éviter le scraping sur les stars = 0 erreurs.
-
+# --- 3. DATA (BASE DE DONNÉES LOCALE - ZERO ERREUR) ---
 DB = {
-    # --- HEAVYWEIGHT (265 lbs) ---
     "Jon Jones": {"Cat": "HW", "Taille": "6' 4\"", "Allonge": "84\"", "Coups": 4.30, "TD": 1.85, "DefLutte": 95, "Preci": 58},
     "Tom Aspinall": {"Cat": "HW", "Taille": "6' 5\"", "Allonge": "78\"", "Coups": 7.72, "TD": 3.50, "DefLutte": 100, "Preci": 66},
     "Ciryl Gane": {"Cat": "HW", "Taille": "6' 4\"", "Allonge": "81\"", "Coups": 5.11, "TD": 0.60, "DefLutte": 45, "Preci": 59},
@@ -42,16 +36,12 @@ DB = {
     "Sergei Pavlovich": {"Cat": "HW", "Taille": "6' 3\"", "Allonge": "84\"", "Coups": 8.20, "TD": 0.00, "DefLutte": 75, "Preci": 48},
     "Curtis Blaydes": {"Cat": "HW", "Taille": "6' 4\"", "Allonge": "80\"", "Coups": 3.50, "TD": 5.80, "DefLutte": 33, "Preci": 50},
     "Jailton Almeida": {"Cat": "HW", "Taille": "6' 3\"", "Allonge": "79\"", "Coups": 2.50, "TD": 6.40, "DefLutte": 75, "Preci": 55},
-
-    # --- LIGHT HEAVYWEIGHT (205 lbs) ---
     "Alex Pereira": {"Cat": "LHW", "Taille": "6' 4\"", "Allonge": "79\"", "Coups": 5.10, "TD": 0.20, "DefLutte": 70, "Preci": 62},
     "Jiri Prochazka": {"Cat": "LHW", "Taille": "6' 3\"", "Allonge": "80\"", "Coups": 5.75, "TD": 0.60, "DefLutte": 68, "Preci": 56},
     "Magomed Ankalaev": {"Cat": "LHW", "Taille": "6' 3\"", "Allonge": "75\"", "Coups": 3.60, "TD": 1.10, "DefLutte": 86, "Preci": 53},
     "Jan Blachowicz": {"Cat": "LHW", "Taille": "6' 2\"", "Allonge": "78\"", "Coups": 3.41, "TD": 1.15, "DefLutte": 70, "Preci": 49},
     "Jamahal Hill": {"Cat": "LHW", "Taille": "6' 4\"", "Allonge": "79\"", "Coups": 7.31, "TD": 0.00, "DefLutte": 65, "Preci": 54},
     "Khalil Rountree Jr.": {"Cat": "LHW", "Taille": "6' 1\"", "Allonge": "76\"", "Coups": 3.80, "TD": 0.00, "DefLutte": 58, "Preci": 39},
-
-    # --- MIDDLEWEIGHT (185 lbs) ---
     "Dricus Du Plessis": {"Cat": "MW", "Taille": "6' 1\"", "Allonge": "76\"", "Coups": 6.49, "TD": 2.72, "DefLutte": 55, "Preci": 50},
     "Sean Strickland": {"Cat": "MW", "Taille": "6' 1\"", "Allonge": "76\"", "Coups": 5.82, "TD": 1.00, "DefLutte": 85, "Preci": 41},
     "Israel Adesanya": {"Cat": "MW", "Taille": "6' 4\"", "Allonge": "80\"", "Coups": 3.90, "TD": 0.10, "DefLutte": 77, "Preci": 49},
@@ -59,8 +49,6 @@ DB = {
     "Nassourdine Imavov": {"Cat": "MW", "Taille": "6' 3\"", "Allonge": "75\"", "Coups": 4.60, "TD": 1.10, "DefLutte": 76, "Preci": 54},
     "Khamzat Chimaev": {"Cat": "MW", "Taille": "6' 2\"", "Allonge": "75\"", "Coups": 5.72, "TD": 4.00, "DefLutte": 100, "Preci": 59},
     "Caio Borralho": {"Cat": "MW", "Taille": "6' 1\"", "Allonge": "75\"", "Coups": 2.90, "TD": 2.10, "DefLutte": 65, "Preci": 60},
-
-    # --- WELTERWEIGHT (170 lbs) ---
     "Belal Muhammad": {"Cat": "WW", "Taille": "5' 11\"", "Allonge": "72\"", "Coups": 4.55, "TD": 2.20, "DefLutte": 93, "Preci": 43},
     "Leon Edwards": {"Cat": "WW", "Taille": "6' 0\"", "Allonge": "74\"", "Coups": 2.80, "TD": 1.25, "DefLutte": 70, "Preci": 53},
     "Kamaru Usman": {"Cat": "WW", "Taille": "6' 0\"", "Allonge": "76\"", "Coups": 4.46, "TD": 2.82, "DefLutte": 97, "Preci": 52},
@@ -68,8 +56,6 @@ DB = {
     "Jack Della Maddalena": {"Cat": "WW", "Taille": "5' 11\"", "Allonge": "73\"", "Coups": 7.20, "TD": 0.30, "DefLutte": 67, "Preci": 53},
     "Ian Machado Garry": {"Cat": "WW", "Taille": "6' 3\"", "Allonge": "74\"", "Coups": 6.67, "TD": 0.00, "DefLutte": 69, "Preci": 56},
     "Colby Covington": {"Cat": "WW", "Taille": "5' 11\"", "Allonge": "72\"", "Coups": 4.00, "TD": 4.05, "DefLutte": 79, "Preci": 39},
-
-    # --- LIGHTWEIGHT (155 lbs) ---
     "Islam Makhachev": {"Cat": "LW", "Taille": "5' 10\"", "Allonge": "70\"", "Coups": 2.46, "TD": 3.17, "DefLutte": 90, "Preci": 60},
     "Arman Tsarukyan": {"Cat": "LW", "Taille": "5' 7\"", "Allonge": "72\"", "Coups": 3.80, "TD": 3.40, "DefLutte": 75, "Preci": 48},
     "Charles Oliveira": {"Cat": "LW", "Taille": "5' 10\"", "Allonge": "74\"", "Coups": 3.50, "TD": 2.30, "DefLutte": 55, "Preci": 53},
@@ -80,8 +66,6 @@ DB = {
     "Dan Hooker": {"Cat": "LW", "Taille": "6' 0\"", "Allonge": "75\"", "Coups": 4.90, "TD": 0.90, "DefLutte": 80, "Preci": 48},
     "Conor McGregor": {"Cat": "LW", "Taille": "5' 9\"", "Allonge": "74\"", "Coups": 5.32, "TD": 0.67, "DefLutte": 66, "Preci": 49},
     "Paddy Pimblett": {"Cat": "LW", "Taille": "5' 10\"", "Allonge": "73\"", "Coups": 4.20, "TD": 1.80, "DefLutte": 56, "Preci": 46},
-
-    # --- FEATHERWEIGHT (145 lbs) ---
     "Ilia Topuria": {"Cat": "FW", "Taille": "5' 7\"", "Allonge": "69\"", "Coups": 4.40, "TD": 1.92, "DefLutte": 92, "Preci": 46},
     "Max Holloway": {"Cat": "FW", "Taille": "5' 11\"", "Allonge": "69\"", "Coups": 7.17, "TD": 0.30, "DefLutte": 84, "Preci": 48},
     "Alexander Volkanovski": {"Cat": "FW", "Taille": "5' 6\"", "Allonge": "71\"", "Coups": 6.19, "TD": 1.84, "DefLutte": 70, "Preci": 57},
@@ -89,8 +73,6 @@ DB = {
     "Yair Rodriguez": {"Cat": "FW", "Taille": "5' 11\"", "Allonge": "71\"", "Coups": 4.63, "TD": 0.73, "DefLutte": 59, "Preci": 45},
     "Movsar Evloev": {"Cat": "FW", "Taille": "5' 7\"", "Allonge": "72\"", "Coups": 4.50, "TD": 4.70, "DefLutte": 71, "Preci": 49},
     "Diego Lopes": {"Cat": "FW", "Taille": "5' 11\"", "Allonge": "72\"", "Coups": 3.20, "TD": 1.00, "DefLutte": 45, "Preci": 52},
-
-    # --- BANTAMWEIGHT (135 lbs) ---
     "Merab Dvalishvili": {"Cat": "BW", "Taille": "5' 6\"", "Allonge": "68\"", "Coups": 4.50, "TD": 6.50, "DefLutte": 80, "Preci": 45},
     "Sean O'Malley": {"Cat": "BW", "Taille": "5' 11\"", "Allonge": "72\"", "Coups": 7.25, "TD": 0.40, "DefLutte": 65, "Preci": 61},
     "Petr Yan": {"Cat": "BW", "Taille": "5' 7\"", "Allonge": "67\"", "Coups": 5.03, "TD": 1.70, "DefLutte": 85, "Preci": 53},
@@ -101,27 +83,17 @@ DB = {
     "Henry Cejudo": {"Cat": "BW", "Taille": "5' 4\"", "Allonge": "64\"", "Coups": 3.90, "TD": 2.00, "DefLutte": 90, "Preci": 45}
 }
 
-# --- 4. LOGIQUE DE FILTRE (SUPERFIGHTS) ---
-# Si je choisis Lightweight, je vois FW, LW, WW.
 WEIGHT_MAP = ["BW", "FW", "LW", "WW", "MW", "LHW", "HW"]
 
 def get_filtered_roster(category_code):
-    """Retourne les combattants de la catégorie + celle du dessus + celle du dessous"""
-    if category_code == "ALL":
-        return sorted(list(DB.keys()))
-    
+    if category_code == "ALL": return sorted(list(DB.keys()))
     try:
         idx = WEIGHT_MAP.index(category_code)
-        # On prend l'index, -1 et +1
         allowed = [WEIGHT_MAP[i] for i in range(max(0, idx-1), min(len(WEIGHT_MAP), idx+2))]
-    except:
-        allowed = [category_code]
+    except: allowed = [category_code]
+    return sorted([name for name, data in DB.items() if data['Cat'] in allowed])
 
-    # On filtre la DB
-    filtered = [name for name, data in DB.items() if data['Cat'] in allowed]
-    return sorted(filtered)
-
-# --- 5. MOTEUR & CONVERSIONS ---
+# --- 4. HELPERS ---
 def clean_num(val):
     if isinstance(val, (int, float)): return val
     try: return float(str(val).replace('%','').replace(' cm','').strip())
@@ -136,14 +108,9 @@ def to_cm(imp):
 
 @st.cache_data
 def get_data(name):
-    # ICI C'EST MAGIQUE : On regarde d'abord dans la DB hardcodée (0 erreur)
     if name in DB:
-        d = DB[name].copy()
-        d['Nom'] = name
+        d = DB[name].copy(); d['Nom'] = name
         return d
-    
-    # Si le combattant n'est pas dans la DB, on pourrait scraper ici (optionnel)
-    # Pour cette version ultra-stable, on ne gère que la DB.
     return None
 
 def process_units(d, lang):
@@ -166,59 +133,70 @@ def calc_algo(f1, f2):
     k=int(f*sr); sb=int(f*(1-sr)); d=100-k-sb
     return int(s),k,sb,d
 
-# --- 6. CSS (RUNNATIC STYLE) ---
+# --- 5. STYLE CSS (ÉPURÉ) ---
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;800;900&display=swap');
     .stApp { background-color: #0f172a; background-image: radial-gradient(at 50% 0%, rgba(46, 204, 113, 0.1) 0px, transparent 60%); font-family: 'Montserrat', sans-serif; }
     h1,h2,div,p{font-family:'Montserrat',sans-serif!important;}
-    .main-title { font-weight: 900; font-size: 2rem; color: white; letter-spacing: -1px; margin:0; }
+    
+    /* Supprimer les cadres autour des inputs */
+    .stSelectbox > div > div {
+        background-color: transparent !important;
+        border: none !important;
+    }
+    .stSelectbox div[data-baseweb="select"] > div {
+        background-color: #1e293b !important;
+        border: 1px solid rgba(255,255,255,0.1) !important;
+        color: white !important;
+        border-radius: 12px;
+    }
+
+    /* Cards pour résultats uniquement */
     .glass-card { background: rgba(30, 41, 59, 0.6); backdrop-filter: blur(12px); border-radius: 20px; padding: 24px; border: 1px solid rgba(255,255,255,0.08); box-shadow: 0 10px 30px -5px rgba(0,0,0,0.4); margin-bottom: 20px; }
+    
     div.stButton>button { background: #2ecc71!important; color: #020617!important; border-radius: 12px; padding: 18px; font-weight: 900; text-transform: uppercase; border: none; width: 100%; }
     .bar-bg { width: 100%; height: 8px; background: rgba(255,255,255,0.1); border-radius: 4px; overflow: hidden; display: flex; margin-top: 5px; }
     .bar-l { height: 100%; background: #38bdf8; } .bar-r { height: 100%; background: #f43f5e; }
     .finish-cont { width: 100%; height: 14px; background: #1e293b; border-radius: 7px; overflow: hidden; display: flex; margin-top: 10px; }
-    .cat-tag { background: #1e293b; color: #94a3b8; padding: 4px 10px; border-radius: 8px; font-size: 0.7rem; font-weight: 700; border: 1px solid rgba(255,255,255,0.1); display: inline-block; margin-right: 5px; }
 </style>
 """, unsafe_allow_html=True)
 
-# --- 7. INTERFACE ---
+# --- 6. INTERFACE ---
 c_t, c_l = st.columns([5,1])
 with c_t: 
-    # --- LOGO & TITRE ---
-    # J'utilise l'image que vous avez fournie. Assurez-vous que le fichier image_0.png est dans le même dossier.
-    # Si vous l'hébergez en ligne, remplacez le src par l'URL.
-    st.markdown(f"""
-    <div style="display: flex; align-items: center; justify-content: center; margin-bottom: 5px;">
-        <img src="https://i.imgur.com/8Q66666.png" alt="Logo" style="height: 50px; margin-right: 15px;"> <h1 class="main-title" style="margin: 0;">CAGEMETRICS <span style="color:#2ecc71">PRO</span></h1>
-    </div>
-    """, unsafe_allow_html=True)
+    # LOGO REMPLACE LE TITRE
+    # IMPORTANT: Assure-toi que logo.png est dans le même dossier !
+    if os.path.exists("logo.png"):
+        st.image("logo.png", width=350)
+    else:
+        st.warning("⚠️ Image 'logo.png' introuvable. Ajoutez-la dans le dossier.")
+        st.markdown(f"<h1 style='color:white; font-size:2rem;'>CAGEMETRICS <span style='color:#2ecc71'>PRO</span></h1>", unsafe_allow_html=True)
     st.caption(txt['sub'])
+
 with c_l: 
     if st.button("🇫🇷" if st.session_state.lang == 'en' else "🇺🇸"): toggle(); st.rerun()
 
-# --- SELECTEUR CATÉGORIE ---
-st.markdown(f'<div class="glass-card"><div style="font-size:0.75rem; color:#94a3b8; font-weight:700; margin-bottom:10px; letter-spacing:1px;">{txt["step1"]}</div>', unsafe_allow_html=True)
-cats_map = {"Heavyweight (HW)": "HW", "Light Heavyweight (LHW)": "LHW", "Middleweight (MW)": "MW", "Welterweight (WW)": "WW", "Lightweight (LW)": "LW", "Featherweight (FW)": "FW", "Bantamweight (BW)": "BW", "Show All / Fantasy": "ALL"}
-cat_name = st.selectbox("Category", list(cats_map.keys()), label_visibility="collapsed")
-cat_code = cats_map[cat_name]
-st.markdown('</div>', unsafe_allow_html=True)
+# --- INPUTS (SANS CADRE) ---
+# Espace vertical
+st.markdown("<br>", unsafe_allow_html=True)
 
-# --- SELECTEUR MATCHUP ---
+cats_map = {"Heavyweight (HW)": "HW", "Light Heavyweight (LHW)": "LHW", "Middleweight (MW)": "MW", "Welterweight (WW)": "WW", "Lightweight (LW)": "LW", "Featherweight (FW)": "FW", "Bantamweight (BW)": "BW", "Show All": "ALL"}
+cat_name = st.selectbox("", list(cats_map.keys()), label_visibility="collapsed")
+cat_code = cats_map[cat_name]
+
 filtered_roster = get_filtered_roster(cat_code)
 
-st.markdown(f'<div class="glass-card"><div style="font-size:0.75rem; color:#94a3b8; font-weight:700; margin-bottom:15px; letter-spacing:1px;">{txt["step2"]}</div>', unsafe_allow_html=True)
 c1,c2,c3=st.columns([1,0.1,1])
-# Auto-select index safely
 def get_idx(lst, name): return lst.index(name) if name in lst else 0
-
 idx_a = 0
 idx_b = 1 if len(filtered_roster) > 1 else 0
 
 f_a = c1.selectbox("A", filtered_roster, index=idx_a, label_visibility="collapsed", key="fa")
 c2.markdown("<div style='text-align:center; padding-top:10px; font-weight:900; color:white;'>VS</div>",unsafe_allow_html=True)
 f_b = c3.selectbox("B", filtered_roster, index=idx_b, label_visibility="collapsed", key="fb")
-st.markdown('</div>',unsafe_allow_html=True)
+
+st.markdown("<br>", unsafe_allow_html=True)
 
 # --- BOUTON CENTRÉ ---
 col_pad1, col_btn, col_pad2 = st.columns([1, 2, 1])
@@ -235,13 +213,9 @@ with col_btn:
                 if s1 and s2:
                     sc,k,sb,d=calc_algo(s1,s2); w=s1['Nom'] if sc>=50 else s2['Nom']; cf=sc if sc>=50 else 100-sc
                     
-                    # Winner
                     st.markdown(f"""<div class="glass-card" style="text-align:center; border:2px solid #2ecc71; background:rgba(46, 204, 113, 0.05);"><div style="color:#94a3b8; font-size:0.7rem; font-weight:700; letter-spacing:1px; margin-bottom:5px;">{txt['win']}</div><div style="font-size:2.2rem; font-weight:900; color:white; line-height:1; margin-bottom:10px;">{w}</div><span style="background:#2ecc71; color:#020617; padding:4px 12px; border-radius:20px; font-weight:800; font-size:0.8rem;">{cf}% {txt['conf']}</span></div>""",unsafe_allow_html=True)
-                    
-                    # Finish
                     st.markdown(f"""<div class="glass-card"><div style="text-align:center; font-weight:800; color:white;">{txt['meth']}</div><div class="finish-cont"><div style="width:{k}%; background:#ef4444;"></div><div style="width:{sb}%; background:#eab308;"></div><div style="width:{d}%; background:#3b82f6;"></div></div><div style="display:flex; justify-content:space-between; margin-top:8px; font-size:0.7rem; font-weight:700;"><span style="color:#ef4444">KO/TKO {k}%</span><span style="color:#eab308">SUB {sb}%</span><span style="color:#3b82f6">DEC {d}%</span></div></div>""",unsafe_allow_html=True)
                     
-                    # Tech
                     st.markdown(f'<div class="glass-card"><div style="text-align:center; color:#94a3b8; font-weight:700; margin-bottom:15px;">{txt["tech"]}</div>',unsafe_allow_html=True)
                     def stat_vis(l,v1,v2):
                         n1=clean_num(v1); n2=clean_num(v2); tot=max(n1+n2,0.1); p1=(n1/tot)*100; p2=(n2/tot)*100
@@ -251,6 +225,5 @@ with col_btn:
                     stat_vis(l[3],f"{s1['Preci']}%",f"{s2['Preci']}%"); stat_vis(l[4],s1['TD'],s2['TD']); stat_vis(l[5],f"{s1['DefLutte']}%",f"{s2['DefLutte']}%")
                     st.markdown('</div>',unsafe_allow_html=True)
                     
-                    # CTA
                     st.markdown(f"""<a href="https://www.unibet.fr/sport/mma" target="_blank" style="text-decoration:none;"><button style="width:100%; background:#fc4c02; color:white; border:none; padding:16px; border-radius:12px; font-weight:800; cursor:pointer;">{txt['cta']} {w}</button></a>""",unsafe_allow_html=True)
                 else: st.error("Data error.")
