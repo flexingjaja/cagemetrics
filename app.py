@@ -2,144 +2,216 @@ import streamlit as st
 import requests
 from bs4 import BeautifulSoup
 
-st.set_page_config(page_title="CageMetrics Ultimate", page_icon="🥊")
+# --- 1. CONFIGURATION DE LA PAGE (Doit être la première ligne) ---
+st.set_page_config(page_title="CageMetrics Pro", page_icon="🥊", layout="wide")
 
-# --- FONCTION 1 : CHERCHER LES NOMS ---
+# --- 2. INJECTION CSS (Le Maquillage) ---
+# C'est ici qu'on transforme le look moche en look Pro
+st.markdown("""
+<style>
+    /* Fond général sombre */
+    .stApp {
+        background-color: #0e1117;
+    }
+    
+    /* Titre Principal */
+    h1 {
+        color: #FFFFFF;
+        text-align: center;
+        font-family: 'Arial Black', sans-serif;
+        text-transform: uppercase;
+        letter-spacing: 2px;
+    }
+    
+    /* Les sous-titres */
+    h2, h3 {
+        color: #ff4b4b; /* Rouge UFC */
+    }
+    
+    /* Style des Metrics (Les gros chiffres) */
+    div[data-testid="stMetric"] {
+        background-color: #262730;
+        padding: 15px;
+        border-radius: 10px;
+        border: 1px solid #3d3d3d;
+        text-align: center;
+    }
+    
+    /* Bouton personnalisé */
+    div.stButton > button {
+        width: 100%;
+        background-color: #ff4b4b;
+        color: white;
+        font-weight: bold;
+        border-radius: 20px;
+        padding: 10px;
+        border: none;
+        transition: 0.3s;
+    }
+    div.stButton > button:hover {
+        background-color: #ff0000;
+        box-shadow: 0 0 10px #ff0000;
+    }
+
+    /* Carte de résultat (Custom HTML) */
+    .result-card {
+        background-color: #1c1c1c;
+        padding: 20px;
+        border-radius: 15px;
+        border-left: 5px solid #ff4b4b;
+        margin-top: 20px;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+    }
+</style>
+""", unsafe_allow_html=True)
+
+# --- 3. FONCTIONS MOTEUR (On garde la logique) ---
 @st.cache_data
 def chercher_combattants(nom_partiel):
-    """
-    Cherche sur UFCStats et renvoie une liste de choix :
-    Ex: [{'nom': 'Ilia Topuria', 'url': '...'}, {'nom': 'Aleksandre Topuria', 'url': '...'}]
-    """
-    if not nom_partiel or len(nom_partiel) < 2:
-        return []
-
+    if not nom_partiel or len(nom_partiel) < 2: return []
     nom_clean = nom_partiel.strip().replace(' ', '+')
-    search_url = f"http://ufcstats.com/statistics/fighters/search?query={nom_clean}"
-    
-    headers = {'User-Agent': 'Mozilla/5.0'}
-    
     try:
-        response = requests.get(search_url, headers=headers, timeout=5)
+        response = requests.get(f"http://ufcstats.com/statistics/fighters/search?query={nom_clean}", headers={'User-Agent': 'Mozilla/5.0'}, timeout=5)
         soup = BeautifulSoup(response.content, 'html.parser')
-        
         resultats = []
-        rows = soup.find_all('tr', class_='b-statistics__table-row')
-        
-        # On regarde les 10 premiers résultats max
-        for row in rows[1:11]: 
-            link_tag = row.find('a', href=True)
-            if link_tag:
-                nom = link_tag.text.strip()
-                # On récupère aussi le surnom s'il existe pour aider à choisir
-                cols = row.find_all('td')
-                if len(cols) > 2:
-                    surnom = cols[2].text.strip()
-                    if surnom:
-                        nom = f"{nom} ({surnom})"
-                
-                resultats.append({'nom': nom, 'url': link_tag['href']})
-                
+        for row in soup.find_all('tr', class_='b-statistics__table-row')[1:8]: # Max 7 résultats pour pas polluer
+            link = row.find('a', href=True)
+            if link: resultats.append({'nom': link.text.strip(), 'url': link['href']})
         return resultats
-    except:
-        return []
+    except: return []
 
-# --- FONCTION 2 : RECUPERER LES STATS ---
 def get_fighter_stats(fighter_url):
-    headers = {'User-Agent': 'Mozilla/5.0'}
     try:
-        response = requests.get(fighter_url, headers=headers, timeout=5)
+        response = requests.get(fighter_url, headers={'User-Agent': 'Mozilla/5.0'}, timeout=5)
         soup = BeautifulSoup(response.content, 'html.parser')
-        stats = {}
+        stats = {'Coups/min': 0.0, 'Takedown Avg': 0.0, 'Défense Lutte (%)': 0, 'Précision': 0}
         
         title = soup.find('span', class_='b-content__title-highlight')
         stats['Nom'] = title.text.strip() if title else "Inconnu"
         
-        stats['Coups/min'] = 0.0
-        stats['Takedown Avg'] = 0.0
-        stats['Défense Lutte (%)'] = 0
-
-        rows = soup.find_all('li', class_='b-list__box-list-item')
-        for row in rows:
+        for row in soup.find_all('li', class_='b-list__box-list-item'):
             text = row.text.replace('\n', '').strip()
-            try:
-                if "SLpM:" in text: stats['Coups/min'] = float(text.split(':')[1].strip())
-                if "TD Avg.:" in text: stats['Takedown Avg'] = float(text.split(':')[1].strip())
-                if "TD Def.:" in text: stats['Défense Lutte (%)'] = int(text.split(':')[1].strip().replace('%', ''))
-            except: continue
+            if "SLpM:" in text: stats['Coups/min'] = float(text.split(':')[1].strip())
+            if "TD Avg.:" in text: stats['Takedown Avg'] = float(text.split(':')[1].strip())
+            if "TD Def.:" in text: stats['Défense Lutte (%)'] = int(text.split(':')[1].strip().replace('%', ''))
+            if "Str. Acc.:" in text: stats['Précision'] = int(text.split(':')[1].strip().replace('%', ''))
         return stats
     except: return None
 
-# --- INTERFACE ---
-st.title("🥊 CageMetrics : Recherche Totale")
-st.write("Trouvez n'importe quel combattant parmi les milliers de l'UFC.")
+# --- 4. L'INTERFACE GRAPHIQUE ---
 
-col1, col2 = st.columns(2)
+# Header Centré
+col_h1, col_h2, col_h3 = st.columns([1,2,1])
+with col_h2:
+    st.title("🥊 CAGEMETRICS")
+    st.markdown("<p style='text-align: center; color: gray;'>L'intelligence artificielle au service de vos paris</p>", unsafe_allow_html=True)
 
-# --- ZONE COMBATTANT A ---
-with col1:
-    st.subheader("Combattant 1")
-    recherche_a = st.text_input("Nom (ex: Topuria)", key="search_a")
-    
-    # Si l'utilisateur a écrit quelque chose, on cherche
-    choix_possibles_a = []
-    url_a_final = None
-    
-    if recherche_a:
-        resultats_a = chercher_combattants(recherche_a)
-        if resultats_a:
-            # On crée une liste de noms pour le menu déroulant
-            options_a = {r['nom']: r['url'] for r in resultats_a}
-            nom_choisi_a = st.selectbox("Résultats trouvés :", list(options_a.keys()), key="select_a")
-            # On stocke l'URL du gagnant
-            url_a_final = options_a[nom_choisi_a]
-        else:
-            st.warning("Aucun combattant trouvé.")
+st.divider()
 
-# --- ZONE COMBATTANT B ---
-with col2:
-    st.subheader("Combattant 2")
-    recherche_b = st.text_input("Nom (ex: Holloway)", key="search_b")
-    
-    choix_possibles_b = []
-    url_b_final = None
-    
-    if recherche_b:
-        resultats_b = chercher_combattants(recherche_b)
-        if resultats_b:
-            options_b = {r['nom']: r['url'] for r in resultats_b}
-            nom_choisi_b = st.selectbox("Résultats trouvés :", list(options_b.keys()), key="select_b")
-            url_b_final = options_b[nom_choisi_b]
-        else:
-            st.warning("Aucun combattant trouvé.")
+# Zone de Recherche (Style Dashboard)
+c1, c_mid, c2 = st.columns([1, 0.2, 1])
 
-st.markdown("---")
+with c1:
+    st.markdown("### 🔵 Coin Bleu")
+    search_a = st.text_input("Rechercher combattant A", key="s_a", placeholder="Ex: Pereira")
+    url_a = None
+    if search_a:
+        res_a = chercher_combattants(search_a)
+        if res_a:
+            opts_a = {r['nom']: r['url'] for r in res_a}
+            sel_a = st.selectbox("Sélectionner A", list(opts_a.keys()), key="sel_a")
+            url_a = opts_a[sel_a]
 
-# --- BOUTON FINAL ---
-if st.button("Lancer l'Analyse 🚀", type="primary"):
-    if url_a_final and url_b_final:
-        with st.spinner("Analyse des données en cours..."):
-            f1 = get_fighter_stats(url_a_final)
-            f2 = get_fighter_stats(url_b_final)
+with c_mid:
+    st.markdown("<h1 style='text-align: center; padding-top: 50px;'>VS</h1>", unsafe_allow_html=True)
+
+with c2:
+    st.markdown("### 🔴 Coin Rouge")
+    search_b = st.text_input("Rechercher combattant B", key="s_b", placeholder="Ex: Ankalaev")
+    url_b = None
+    if search_b:
+        res_b = chercher_combattants(search_b)
+        if res_b:
+            opts_b = {r['nom']: r['url'] for r in res_b}
+            sel_b = st.selectbox("Sélectionner B", list(opts_b.keys()), key="sel_b")
+            url_b = opts_b[sel_b]
+
+# Bouton Action (Centré)
+st.markdown("<br>", unsafe_allow_html=True)
+b_col1, b_col2, b_col3 = st.columns([1, 1, 1])
+with b_col2:
+    bouton = st.button("ANALYSER LE COMBAT 🚀")
+
+# --- 5. RESULTATS & VISUELS ---
+if bouton and url_a and url_b:
+    with st.spinner("Analyse des datas UFC..."):
+        f1 = get_fighter_stats(url_a)
+        f2 = get_fighter_stats(url_b)
+        
+        if f1 and f2:
+            st.markdown("---")
             
-            if f1 and f2:
-                st.success(f"Duel : {f1['Nom']} vs {f2['Nom']}")
-                
-                # STATS
-                c1, c2, c3 = st.columns(3)
-                c1.metric("Frappes/min", f"{f1['Nom']}", f1['Coups/min'])
-                c2.metric("Frappes/min", f"{f2['Nom']}", f2['Coups/min'])
-                c3.metric("Différence", round(f1['Coups/min'] - f2['Coups/min'], 2))
+            # TALE OF THE TAPE (Face à Face)
+            t1, t2, t3, t4 = st.columns(4)
+            t1.metric("Volume (Coups/min)", f1['Coups/min'], delta_color="off")
+            t2.metric(f"{f1['Nom']}", "VS")
+            t3.metric(f"{f2['Nom']}", "STATS")
+            t4.metric("Volume (Coups/min)", f2['Coups/min'], delta_color="off")
+            
+            # VISUALISATION (Barres de progression)
+            st.markdown("#### 📊 Comparatif Visuel")
+            
+            # Barre Striking
+            st.caption(f"Activité Debout (Volume)")
+            vol_total = f1['Coups/min'] + f2['Coups/min'] + 0.1
+            st.progress(f1['Coups/min'] / vol_total)
+            col_txt_a, col_txt_b = st.columns(2)
+            col_txt_a.markdown(f"**{f1['Nom']}**")
+            col_txt_b.markdown(f"<div style='text-align: right'>**{f2['Nom']}**</div>", unsafe_allow_html=True)
 
-                # ANALYSE
-                st.subheader("🧠 Analyse Stratégique")
-                if f1['Takedown Avg'] > 2.0 and f2['Défense Lutte (%)'] < 55:
-                    st.error(f"🚨 **MENACE SOL :** {f1['Nom']} va probablement dominer en lutte.")
-                elif f2['Takedown Avg'] > 2.0 and f1['Défense Lutte (%)'] < 55:
-                    st.error(f"🚨 **MENACE SOL :** {f2['Nom']} a l'avantage pour amener le combat au sol.")
-                elif abs(f1['Coups/min'] - f2['Coups/min']) > 2:
-                    st.info("🥊 Le combat risque de se jouer debout (Striking).")
-                else:
-                    st.warning("⚖️ C'est un 50/50 statistique.")
-    else:
-        st.error("Veuillez sélectionner deux combattants valides ci-dessus.")
+            # Barre Lutte
+            st.markdown("<br>", unsafe_allow_html=True)
+            st.caption(f"Danger Sol (Takedowns/15min)")
+            td_total = f1['Takedown Avg'] + f2['Takedown Avg'] + 0.1
+            st.progress(f1['Takedown Avg'] / td_total)
+
+            # L'ANALYSE (CARD DESIGN)
+            st.markdown("### 🧠 L'Analyse de l'Algo")
+            
+            advice_html = ""
+            
+            # Logique
+            if f1['Takedown Avg'] > 2.5 and f2['Défense Lutte (%)'] < 60:
+                advice_html = f"""
+                <div class="result-card">
+                    <h3 style="color: #ff4b4b;">🚨 ALERTE GRAPPLING</h3>
+                    <p style="font-size: 18px; color: #ddd;">
+                        <strong>{f1['Nom']}</strong> possède un avantage critique au sol. La défense de {f2['Nom']} ({f2['Défense Lutte (%)']}%) 
+                        est statistiquement trop faible pour résister 3 rounds.
+                    </p>
+                    <p>👉 <strong>Conseil :</strong> Parier sur {f1['Nom']} ou "Victoire par Soumission".</p>
+                </div>
+                """
+            elif f1['Coups/min'] > (f2['Coups/min'] + 2.0):
+                advice_html = f"""
+                <div class="result-card" style="border-left: 5px solid #00cc00;">
+                    <h3 style="color: #00cc00;">🥊 AVANTAGE VOLUME</h3>
+                    <p style="font-size: 18px; color: #ddd;">
+                        <strong>{f1['Nom']}</strong> est une mitraillette ({f1['Coups/min']} coups/min). 
+                        Il va noyer {f2['Nom']} sous le volume.
+                    </p>
+                    <p>👉 <strong>Conseil :</strong> Victoire aux points (Décision) pour {f1['Nom']}.</p>
+                </div>
+                """
+            else:
+                 advice_html = f"""
+                <div class="result-card" style="border-left: 5px solid #ffa500;">
+                    <h3 style="color: #ffa500;">⚖️ COMBAT SERRÉ</h3>
+                    <p style="font-size: 18px; color: #ddd;">
+                        Les statistiques sont très proches. C'est un "Pile ou Face".
+                    </p>
+                    <p>👉 <strong>Conseil :</strong> Évitez de parier gros sur ce combat.</p>
+                </div>
+                """
+            
+            st.markdown(advice_html, unsafe_allow_html=True)
